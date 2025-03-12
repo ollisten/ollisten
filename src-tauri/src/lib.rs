@@ -6,12 +6,13 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
 
+mod audio;
 mod llm;
 mod system;
 mod whisper;
 
 use crate::llm::llm::{fetch_available_models, LlmModel};
-use crate::whisper::stream_cli::{get_input_audio_devices, DeviceOption};
+use audio::shared::{list_available_audio_input_devices, DeviceOption};
 use whisper::stream_cli;
 
 const MODEL_PATH: &str = "models/";
@@ -45,8 +46,9 @@ async fn initialize() -> InitializeResponse {
         Err(err) => return error_response(format!("Failed to fetch LLM models: {}", err)),
     };
 
-    let listen_device_options = match get_input_audio_devices() {
-        Ok(devices) => devices,
+    let mut listen_device_options = Vec::new();
+    match list_available_audio_input_devices(&mut listen_device_options) {
+        Ok(_) => {}
         Err(err) => return error_response(format!("Failed to fetch input audio devices: {}", err)),
     };
 

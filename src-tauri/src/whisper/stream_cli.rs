@@ -1,8 +1,9 @@
+use crate::audio::shared::DeviceOption;
 use crate::session_event::SessionEvent;
 use crate::whisper::whisper_buf_reader::whisper_buf_reader;
-use cpal::traits::{DeviceTrait, HostTrait};
 use log::{error, info};
 use serde::Serialize;
+use std::any::Any;
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Sender};
@@ -13,12 +14,6 @@ use tauri::ipc::Channel;
 /// This is using whisper-stream CLI to transcribe audio chunks.
 pub struct Runner {
     child: Arc<Mutex<Option<Child>>>,
-}
-
-#[derive(Serialize)]
-pub struct DeviceOption {
-    name: String,
-    id: i32,
 }
 
 impl Runner {
@@ -101,27 +96,4 @@ impl Runner {
             .kill()
             .expect("Failed to kill process");
     }
-}
-
-pub fn get_input_audio_devices() -> Result<Vec<DeviceOption>, String> {
-    let mut devices = Vec::new();
-    let host = cpal::default_host();
-
-    // Add the default device
-    devices.push(DeviceOption {
-        name: "Default".to_string(),
-        id: -1,
-    });
-
-    // Attempt to retrieve input devices
-    let input_devices = host.input_devices().map_err(|e| e.to_string())?;
-    for (index, device) in input_devices.enumerate() {
-        let name = device.name().unwrap_or_else(|_| "Unknown".to_string());
-        devices.push(DeviceOption {
-            name,
-            id: index as i32,
-        });
-    }
-
-    Ok(devices)
 }
