@@ -2,8 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod audio;
-mod session_event;
-mod whisper;
+mod transcription;
 
 #[tokio::main]
 async fn main() {

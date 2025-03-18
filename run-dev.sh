@@ -1,3 +1,2 @@
 #!/bin/bash
-pnpm tauri dev
-
+RUST_BACKTRACE=1 pnpm tauri dev

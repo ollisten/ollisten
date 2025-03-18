@@ -1,5 +1,5 @@
 use crate::audio;
-use audio::shared::DeviceOption;
+use audio::devices::DeviceOption;
 use core_foundation::base::TCFType;
 use core_foundation::string::{CFString, CFStringRef};
 use coreaudio_sys::{
@@ -12,7 +12,7 @@ use coreaudio_sys::{
     AudioObjectGetPropertyDataSize, AudioObjectPropertyAddress, CFStringCreateWithCString,
 };
 use lazy_static::lazy_static;
-use log::{debug, error, info, warn};
+use log::{error, info};
 use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_void;
@@ -26,20 +26,32 @@ lazy_static! {
 const LOCAL_ECHO_INTERNAL_UID: &str = "LocalEcho_INTERNAL";
 const LOCAL_ECHO_INTERNAL_DISPLAY_NAME: &str = "LocalEcho";
 
-pub fn list_available_audio_input_devices(devices: &mut Vec<DeviceOption>) -> Result<(), String> {
+pub fn fetch_hidden_output_device_macos() -> Result<DeviceOption, String> {
     // Acquire lock before audio operations
     let _guard = AudioDeviceMutex.lock().map_err(|e| e.to_string())?;
 
-    // Our hidden device - now using device name lookup
-    if let Ok(Some(device_id)) = get_device_by_uid(LOCAL_ECHO_INTERNAL_UID) {
-        debug!("Internal device {LOCAL_ECHO_INTERNAL_UID} found");
-        devices.push(DeviceOption {
-            id: device_id as i32,
-            name: LOCAL_ECHO_INTERNAL_DISPLAY_NAME.to_string(),
-        });
-    } else {
-        error!("Internal device {LOCAL_ECHO_INTERNAL_UID} was not found");
-    }
+    let device_id = get_device_by_uid(LOCAL_ECHO_INTERNAL_UID)
+        .map_err(|e| {
+            format!(
+                "Failed to fetch {} output device: {}",
+                LOCAL_ECHO_INTERNAL_UID, e
+            )
+        })?
+        .ok_or_else(|| format!("Hidden output device {LOCAL_ECHO_INTERNAL_UID} not found"))?;
+
+    let name = get_device_name(device_id).unwrap_or_else(|_| "Unknown Device".to_string());
+    info!("Internal device {LOCAL_ECHO_INTERNAL_UID} found with id {device_id} name {name}");
+    Ok(DeviceOption {
+        id: device_id as i32,
+        name: LOCAL_ECHO_INTERNAL_DISPLAY_NAME.to_string(),
+    })
+}
+
+pub fn list_available_audio_input_devices_macos(
+    devices: &mut Vec<DeviceOption>,
+) -> Result<(), String> {
+    // Acquire lock before audio operations
+    let _guard = AudioDeviceMutex.lock().map_err(|e| e.to_string())?;
 
     // Default microphone
     devices.push(DeviceOption {
@@ -249,12 +261,14 @@ fn list_audio_input_devices(devices: &mut Vec<DeviceOption>) -> Result<(), Strin
         if has_input_channels(device_id) && is_primary_input_device(device_id) {
             match get_device_name(device_id) {
                 Ok(name) => {
+                    info!("Found device {name} found with id {device_id}");
                     devices.push(DeviceOption {
                         id: device_id as i32,
                         name,
                     });
                 }
                 Err(_) => {
+                    info!("Found device with no name with id {device_id}");
                     // Skip devices with unknown names
                     continue;
                 }
@@ -269,13 +283,11 @@ fn list_audio_input_devices(devices: &mut Vec<DeviceOption>) -> Result<(), Strin
 fn get_device_by_uid(uid: &str) -> Result<Option<AudioDeviceID>, String> {
     unsafe {
         let cstr_uid = CString::new(uid).unwrap();
-        let cf_uid = unsafe {
-            CFStringCreateWithCString(
-                kCFAllocatorDefault,
-                cstr_uid.as_ptr(),
-                kCFStringEncodingUTF8,
-            )
-        };
+        let cf_uid = CFStringCreateWithCString(
+            kCFAllocatorDefault,
+            cstr_uid.as_ptr(),
+            kCFStringEncodingUTF8,
+        );
         let cf_uid_size = size_of::<CFStringRef>();
         let property_address = AudioObjectPropertyAddress {
             mSelector: kAudioHardwarePropertyTranslateUIDToDevice,
