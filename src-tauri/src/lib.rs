@@ -4,6 +4,7 @@ mod llm;
 mod system;
 mod transcription;
 
+use crate::config::manage_config::WatcherState;
 use crate::llm::get_models::LlmModel;
 use crate::transcription::control::TranscriptionState;
 use audio::devices::DeviceOption;
@@ -29,6 +30,9 @@ pub fn run() {
             active_sessions: Arc::new(Mutex::new(HashMap::new())),
             listeners: Arc::new(RwLock::new(HashMap::new())),
         })
+        .manage(WatcherState {
+            watcher: Arc::new(Mutex::new(None)),
+        })
         .plugin(
             tauri_plugin_log::Builder::default()
                 .level(LevelFilter::Info)
@@ -45,6 +49,7 @@ pub fn run() {
             transcription::control::stop_transcription,
             transcription::control::transcription_subscribe,
             transcription::control::transcription_unsubscribe,
+            config::manage_config::get_all_agent_configs,
         ])
         .run(tauri::generate_context!())
         .expect("error running tauri application");

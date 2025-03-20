@@ -1,8 +1,12 @@
 import {Channel, invoke} from "@tauri-apps/api/core";
+import {formatBytesToString} from "../util/unitConversion.ts";
 
 export type Event = {
     type: 'status-change';
     status: Status;
+} | {
+    type: 'loading-progress';
+    progressStr: string;
 } | {
     type: 'transcription-model-options-updated';
     options: string[];
@@ -31,10 +35,6 @@ export type DeviceOption = {
     name: string;
     id: number;
 }
-export type LlmModel = {
-    name: string;
-    size: number;
-}
 
 export enum Status {
     Starting,
@@ -49,13 +49,11 @@ export type Listener = (event: Event) => void;
 export type Unsubscribe = () => void;
 
 type SessionEvent = {
-    event: 'ModelInitializing';
-} | {
     event: 'DownloadProgress';
     data: {
         source: string;
-        size: number;
-        progress: number;
+        size: number; // total size
+        progress: number; // Downloaded size
     };
 } | {
     event: 'LoadingProgress';
@@ -85,16 +83,16 @@ type SessionEvent = {
 
 export class Transcription {
 
-    private static pipeline: Transcription | null = null
+    private static instance: Transcription | null = null
     private readonly listeners: Set<Listener> = new Set();
     private readonly sessionChannel = new Channel<SessionEvent>();
     private readonly subscriberName = Math.random().toString(36).substring(7);
 
     static get = () => {
-        if (!Transcription.pipeline) {
-            Transcription.pipeline = new Transcription();
+        if (!Transcription.instance) {
+            Transcription.instance = new Transcription();
         }
-        return Transcription.pipeline;
+        return Transcription.instance;
     }
 
     private constructor() {
@@ -289,8 +287,7 @@ export class Transcription {
             this.deviceInputOptions = response;
             this.onEvent({type: 'device-input-options-updated', options: response});
             if (this.deviceInputId == null || this.deviceInputOptions.findIndex(o => o.id === this.deviceInputId) === -1) {
-                // TODO re-enable, for now don't auto-select
-                // this.selectInputDeviceId(response[0].id);
+                this.selectInputDeviceId(response[0].id);
             }
         } catch (e) {
             this.onError(`Failed to get microphone/input devices: ${e}`);
@@ -367,14 +364,23 @@ export class Transcription {
 
     private onSessionEvent(event: SessionEvent) {
         switch (event.event) {
-            case "ModelInitializing":
-                this.setStatus(Status.ModelDownloading);
-                break;
             case "DownloadProgress":
-                this.setStatus(Status.ModelDownloading);
+                if (this.getStatus() !== Status.ModelDownloading) {
+                    this.setStatus(Status.ModelDownloading);
+                }
+                this.onEvent({
+                    type: 'loading-progress',
+                    progressStr: `Downloaded: ${formatBytesToString(event.data.progress)} / ${formatBytesToString(event.data.size)}`
+                });
                 break;
             case "LoadingProgress":
-                this.setStatus(Status.ModelLoading);
+                if (this.getStatus() !== Status.ModelLoading) {
+                    this.setStatus(Status.ModelLoading);
+                }
+                this.onEvent({
+                    type: 'loading-progress',
+                    progressStr: `Loaded: ${Math.round(event.data.progress * 100)}%`
+                });
                 break;
             case "TranscriptionStarted":
                 this.setStatus(Status.TranscriptionStarted);

@@ -1,6 +1,5 @@
 import {useEffect, useRef} from "react";
 import {useForceRender} from "./util/useForceRender.ts";
-import {makeStyles} from "@mui/styles";
 import {Transcription} from "./system/transcription.ts";
 
 function TranscriptionView() {

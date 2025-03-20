@@ -17,9 +17,7 @@ use tokio::task::AbortHandle;
 
 pub struct TranscriptionState {
     pub whisper_model: Arc<Mutex<Option<Whisper>>>,
-    // Track transcription tasks by device ID
     pub active_sessions: Arc<Mutex<HashMap<i32, AbortHandle>>>,
-    // Changed from std::sync::RwLock to tokio::sync::RwLock
     pub listeners: Arc<RwLock<HashMap<String, Channel<TranscriptionEvent>>>>,
 }
 
@@ -37,7 +35,6 @@ pub async fn transcription_subscribe(
 #[tauri::command]
 pub async fn transcription_unsubscribe(
     state: State<'_, TranscriptionState>,
-    // Fixed typo in parameter name (was "subcsriber_name")
     subscriber_name: String,
 ) -> Result<(), String> {
     let mut listeners = state.listeners.write().await;
