@@ -3,6 +3,9 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import MuiWrapper from "./MuiWrapper.tsx";
 import AppAgent from "./AppAgent.tsx";
+import {AgentWorker} from "./system/agentWorker.ts";
+
+AgentWorker.get().startMonitor();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>

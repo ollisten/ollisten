@@ -3,6 +3,7 @@ import {useForceRender} from "./util/useForceRender.ts";
 import {Status, Transcription} from "./system/transcription.ts";
 import {Button} from "@mui/material";
 import {AgentManager} from "./system/agentManager.ts";
+import {Llm} from "./system/llm.ts";
 
 enum ButtonState {
     Start,
@@ -16,8 +17,21 @@ function StartButton() {
     useEffect(() => {
         return Transcription.get().subscribe((event) => {
             switch (event.type) {
+                case 'device-input-option-selected':
+                case 'transcription-model-option-selected':
+                case 'device-output-updated':
                 case 'status-change':
-                    forceRender();
+                    forceRender(); // Llm.canStart() may have changed
+                    break;
+            }
+        });
+    }, []);
+
+    useEffect(() => {
+        return Llm.get().subscribeLlmModel(event => {
+            switch (event.type) {
+                case 'llm-model-option-selected':
+                    forceRender(); // Llm.canStart() may have changed
                     break;
             }
         });
@@ -34,6 +48,12 @@ function StartButton() {
         case Status.ModelDownloading:
             disabled = true;
             break;
+    }
+    if (buttonState === ButtonState.Start && (
+        !Transcription.get().canStart()
+        || !Llm.get().canStart()
+    )) {
+        disabled = true;
     }
 
     return (

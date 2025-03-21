@@ -165,14 +165,14 @@ export class Transcription {
                 return;
         }
 
-        if (!this.validateStart().valid) {
+        if (!this.canStart().valid) {
             return;
         }
 
         await this.startTranscription();
     }
 
-    private validateStart(): {
+    public canStart(): {
         valid: true,
         deviceIds: number[],
     } | {
@@ -205,7 +205,7 @@ export class Transcription {
     }
 
     public async startTranscription() {
-        let startData = this.validateStart();
+        let startData = this.canStart();
         if (!startData.valid) {
             this.onError(startData.error);
             return;
@@ -354,7 +354,7 @@ export class Transcription {
             try {
                 listener(event);
             } catch (e) {
-                console.error('Error in error handler', e);
+                console.error('Error in event handler', e);
                 if (event.type !== 'error') {
                     this.onError(`Failed processing event ${event.type}: ${e}`);
                 }

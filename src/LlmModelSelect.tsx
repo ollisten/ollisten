@@ -1,26 +1,26 @@
 import {useCallback, useEffect, useState} from "react";
 import Select, {Option} from "./Select.tsx";
 import {Llm, LlmModel} from "./system/llm.ts";
-import {useAlerts} from "./util/useAlerts.tsx";
 import {formatBytesToString} from "./util/unitConversion.ts";
 
 export default function LlmModelSelect() {
 
-    const {beginProcessing} = useAlerts();
-    const [options, setOptions] = useState<Option[]>([]);
-    // TODO This should be inside Llm.ts, not here
+    const [options, setOptions] = useState<Option[]>(() => Llm.get()
+        .getLlmModelOptions()
+        .map(mapModelToOption));
     const [modelName, setModelName] = useState<string | null>(null);
 
     useEffect(() => {
-        const {onSuccess, onError} = beginProcessing();
-        Llm.getModels().then(models => {
-            onSuccess({content: 'Loaded LLM models'});
-            setOptions(models.map(mapModelToOption));
-            if (models.length > 0) {
-                setModelName(models[0].name);
+        return Llm.get().subscribeLlmModel(event => {
+            switch (event.type) {
+                case 'llm-model-options-updated':
+                    setOptions(event.options
+                        .map(mapModelToOption));
+                    break;
+                case 'llm-model-option-selected':
+                    setModelName(event.modelName);
+                    break;
             }
-        }).catch(err => {
-            onError({content: 'Failed to load LLM models'});
         });
     }, []);
 
@@ -30,7 +30,7 @@ export default function LlmModelSelect() {
             value={modelName}
             options={options}
             onSelect={useCallback((newValue: string) => {
-                setModelName(newValue);
+                Llm.get().selectLlmModelName(newValue);
             }, [])}
         />
     );

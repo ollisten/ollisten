@@ -2,6 +2,7 @@ use log::{error, info};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Emitter, EventTarget, State};
 use tokio::sync::Mutex;
@@ -9,15 +10,13 @@ use tokio::sync::Mutex;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Agent {
-    pub name: String,
     pub prompt: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AgentConfig {
-    #[serde(flatten)]
+    pub name: String,
     pub agent: Agent,
-    pub file_path: String, // Store the file path for reference
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,7 +30,7 @@ pub enum EventType {
 #[serde(rename_all = "camelCase")]
 pub struct FileChangeEvent {
     pub event_type: EventType,
-    pub file_path: String,
+    pub name: String,
     // Content for created/modified files, None for deleted
     pub agent: Option<Agent>,
 }
@@ -94,9 +93,10 @@ fn read_agent_configs() -> Result<Vec<AgentConfig>, String> {
                 })?;
 
                 // Create AgentConfig
+                let agent_name = parse_name_from_file_path(&path);
                 let agent_config = AgentConfig {
                     agent,
-                    file_path: path.to_string_lossy().to_string(),
+                    name: agent_name,
                 };
 
                 agent_configs.push(agent_config);
@@ -144,71 +144,78 @@ async fn start_config_watcher(
                     if !event.paths.is_empty() {
                         let path = &event.paths[0];
 
-                        // Only process yaml files
-                        if path.is_file()
-                            && path
-                                .extension()
-                                .map_or(false, |ext| ext == "yaml" || ext == "yml")
-                        {
-                            // Determine event type
-                            let event_type = match event.kind {
-                                notify::EventKind::Create(_) => EventType::Created,
-                                notify::EventKind::Modify(_) => EventType::Modified,
-                                notify::EventKind::Remove(_) => EventType::Deleted,
-                                _ => return, // Ignore other events
-                            };
+                        // Only process yaml files based on extension
+                        let is_yaml = path
+                            .extension()
+                            .map_or(false, |ext| ext == "yaml" || ext == "yml");
+                        if !is_yaml {
+                            return;
+                        }
 
-                            // For created or modified files, read the content
-                            let agent = match event_type {
-                                EventType::Deleted => None,
-                                _ => match std::fs::read_to_string(path) {
-                                    Ok(content) => Some(match parse_agent(&content) {
-                                        Ok(agent) => agent,
-                                        Err(e) => {
-                                            error!(
-                                                "Failed to parse agent {}: {}",
-                                                path.display(),
-                                                e
-                                            );
-                                            return;
-                                        }
-                                    }),
+                        // For create/modify events, verify it's a file
+                        match event.kind {
+                            notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
+                                if !path.is_file() {
+                                    return;
+                                }
+                            }
+                            _ => {}
+                        }
+
+                        // Determine event type
+                        let event_type = match event.kind {
+                            notify::EventKind::Create(_) => EventType::Created,
+                            notify::EventKind::Modify(_) => EventType::Modified,
+                            notify::EventKind::Remove(_) => EventType::Deleted,
+                            _ => return, // Ignore other events
+                        };
+
+                        // For created or modified files, read the content
+                        let agent = match event_type {
+                            EventType::Deleted => None,
+                            _ => match std::fs::read_to_string(path) {
+                                Ok(content) => Some(match parse_agent(&content) {
+                                    Ok(agent) => agent,
                                     Err(e) => {
-                                        error!("Failed to read file {}: {}", path.display(), e);
+                                        error!("Failed to parse agent {}: {}", path.display(), e);
                                         return;
                                     }
-                                },
-                            };
+                                }),
+                                Err(e) => {
+                                    error!("Failed to read file {}: {}", path.display(), e);
+                                    return;
+                                }
+                            },
+                        };
 
-                            // Create event payload
-                            let file_event = FileChangeEvent {
-                                event_type: event_type,
-                                file_path: path.to_string_lossy().to_string(),
-                                agent,
-                            };
+                        // Create event payload
+                        let agent_name = parse_name_from_file_path(&path);
+                        let file_event = FileChangeEvent {
+                            event_type,
+                            name: agent_name,
+                            agent,
+                        };
 
-                            // Emit event to frontend
-                            if let Err(e) =
-                                app.emit_to(EventTarget::any(), "agent-config-changed", file_event)
-                            {
-                                error!("Failed to emit event: {}", e);
-                                return;
-                            }
+                        // Emit event to frontend
+                        info!("Emitting agent-config-changed event: {:?}", file_event);
+                        if let Err(e) =
+                            app.emit_to(EventTarget::any(), "agent-config-changed", file_event)
+                        {
+                            error!("Failed to emit event: {}", e);
+                            return;
                         }
                     }
                 }
                 Err(e) => error!("Watch error: {:?}", e),
             }
         },
-        Config::default()
-            .with_follow_symlinks(true)
-            .with_compare_contents(true),
+        Config::default(),
     )
     .map_err(|e| format!("Failed to create watcher: {}", e))?;
 
     // Watch the directory
     watcher
-        .watch(&agents_dir, RecursiveMode::Recursive)
+        .watch(&agents_dir, RecursiveMode::NonRecursive)
         .map_err(|e| format!("Failed to watch directory: {}", e))?;
 
     info!("Watching for file changes in {}", agents_dir.display());
@@ -223,4 +230,17 @@ fn parse_agent(content: &str) -> Result<Agent, String> {
     let agent: Agent =
         serde_yaml::from_str(content).map_err(|e| format!("Failed to parse agent: {}", e))?;
     Ok(agent)
+}
+
+/// parse file name without extension via PathBug
+fn parse_name_from_file_path(pathBuf: &PathBuf) -> String {
+    pathBuf
+        .as_path()
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .split('.')
+        .collect::<Vec<&str>>()[0]
+        .to_string()
 }

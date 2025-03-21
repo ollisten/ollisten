@@ -1,9 +1,6 @@
-import {FormControl, InputLabel, MenuItem, Select as MuiSelect} from "@mui/material";
 import {useCallback, useEffect, useState} from "react";
 import Select, {Option} from "./Select.tsx";
-import {useForceRender} from "./util/useForceRender.ts";
 import {Transcription} from "./system/transcription.ts";
-import {LlmModel} from "./system/llm.ts";
 
 export default function TranscriptionModelSelect() {
 
