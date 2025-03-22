@@ -1,5 +1,5 @@
 
-export function formatBytesToString(bytes) {
+export function formatBytesToString(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
 
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];

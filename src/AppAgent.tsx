@@ -1,27 +1,20 @@
 import {makeStyles} from "@mui/styles";
 import {useEffect, useState} from "react";
-import {AgentWorker} from "./system/agentWorker.ts";
-import {Transcription} from "./system/transcription.ts";
-import {Llm} from "./system/llm.ts";
 import {Prompter} from "./system/prompter.ts";
 
 function App() {
     const classes = useStyles();
 
+    // @ts-ignore
     const [prompt, setPrompt] = useState<string | null>(null);
     const [answer, setAnswer] = useState<string | null>(null);
 
     useEffect(() => {
-        return Transcription.get().subscribe(async event => {
-            switch (event.type) {
-                case 'transcription-data':
-                    const prompt = Prompter.get().constructPrompt(event.text);
-                    const answer = await Llm.get().talk(prompt);
-                    setPrompt(prompt);
-                    setAnswer(answer);
-                    break;
-            }
+        Prompter.get().start(llmResponse => {
+            setPrompt(llmResponse.prompt);
+            setAnswer(llmResponse.answer);
         });
+        return () => Prompter.get().stop();
     }, []);
 
     return (
@@ -29,25 +22,24 @@ function App() {
             data-tauri-drag-region
             className={classes.root}
         >
-            <p>
-                Name: {AgentWorker.get().getName()}
-            </p>
-            <b>
-                Prompt: {prompt}
-            </b>
-            <p>
-                {answer || ''}
-            </p>
+            <div
+                data-tauri-drag-region
+            >
+            {answer || ''}
+            </div>
         </main>
     );
 }
 
 const useStyles = makeStyles({
     root: {
+        background: 'transparent',
         display: 'flex',
         flexDirection: 'column',
+        height: '100vh',
+        width: '100vw',
         gap: '1rem',
-        margin: '1rem',
+        padding: '1rem',
     },
 });
 

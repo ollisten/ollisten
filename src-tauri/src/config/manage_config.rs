@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Agent {
+    pub interval_in_sec: Option<f64>,
     pub prompt: String,
 }
 

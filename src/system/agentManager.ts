@@ -4,6 +4,7 @@ import {listen} from "@tauri-apps/api/event";
 import {Llm} from "./llm.ts";
 
 export interface Agent {
+    intervalInSec: number;
     prompt: string;
 }
 
@@ -81,11 +82,18 @@ export class AgentManager {
             height: 250,
             x: 100,
             y: 100,
-            decorations: true,
+            decorations: false,
             resizable: true,
+            alwaysOnTop: true,
+            transparent: true,
+            visible: false,
         });
         webview.once('tauri://created', () => {
             console.log(`Window successfully created for agent ${agentConfig.name}`);
+            invoke<void>('setup_agent_window', {
+                windowLabel: webview.label,
+            })
+                .catch((err: Error) => console.log("Failed to setup agent window", err));
         });
         webview.once('tauri://error', (e) => {
             delete this.agentWindows[agentConfig.name];

@@ -57,6 +57,7 @@ const subscribe: Subscribe = (listener: Listener) => {
  */
 
 export type DismissAlert = () => void;
+// @ts-ignore
 export const useAlerts: {
     addAlert: (alert: AlertDefinition) => DismissAlert;
     addAlertWithoutId: (alert: AlertDefinition) => DismissAlert;

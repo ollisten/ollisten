@@ -36,3 +36,6 @@ kalosm = { version = "0.4.0", features = ["sound", "metal"] }
 futures-core = "0.3.30"
 rodio = "0.20.1"
 notify = "8.0.0"
+
+[target."cfg(target_os = \"macos\")".dependencies]
+cocoa = "0.26"
