@@ -1,7 +1,7 @@
 import {invoke} from "@tauri-apps/api/core";
 import {WebviewWindow} from "@tauri-apps/api/webviewWindow";
-import {listen} from "@tauri-apps/api/event";
 import {Llm} from "./llm.ts";
+import {SubscriptionManager} from "./subscriptionManager.ts";
 
 export interface Agent {
     intervalInSec: number;
@@ -14,13 +14,13 @@ export interface AgentConfig {
 }
 
 export type FileChangeEvent = {
-    eventType: 'Created' | 'Modified';
     name: string;
+} & ({
+    type: 'FileAgentCreated' | 'FileAgentModified';
     agent: Agent;
 } | {
-    eventType: 'Deleted';
-    name: string;
-}
+    type: 'FileAgentDeleted';
+})
 
 export class AgentManager {
 
@@ -45,28 +45,22 @@ export class AgentManager {
             this.startAgent(agentConfig);
         })
 
-        const unlistenPromise = listen<FileChangeEvent>('agent-config-changed', (event) => {
-
-            console.log('Received agent config change event:', event);
-            switch (event.payload.eventType) {
-                case 'Created':
-                    this.startAgent(event.payload);
+        this.monitorUnlisten = SubscriptionManager.get().subscribe([
+            'FileAgentCreated', 'FileAgentDeleted',
+        ], (event: FileChangeEvent) => {
+            switch (event.type) {
+                case 'FileAgentCreated':
+                    this.startAgent(event);
                     break;
-                case 'Deleted':
-                    const webview = this.agentWindows[event.payload.name];
+                case 'FileAgentDeleted':
+                    const webview = this.agentWindows[event.name];
                     if (webview) {
                         webview.destroy();
-                        delete this.agentWindows[event.payload.name];
+                        delete this.agentWindows[event.name];
                     }
                     break;
             }
-        }).catch((e) => {
-            console.error('Failed to listen to agent config changes:', e);
         });
-
-        this.monitorUnlisten = () => {
-            unlistenPromise.then((unlisten) => unlisten?.());
-        };
     }
 
     private startAgent(agentConfig: AgentConfig) {
@@ -113,5 +107,14 @@ export class AgentManager {
         Object.values(this.agentWindows).forEach(webview => {
             webview.destroy();
         });
+    }
+
+    public clientGetAgentConfig(): AgentConfig {
+        const agentParam = new URLSearchParams(window.location.search)
+            .get('agentConfig');
+        if (!agentParam) {
+            throw new Error('Expecting agent config to be passed in, but found none')
+        }
+        return JSON.parse(decodeURIComponent(agentParam));
     }
 }

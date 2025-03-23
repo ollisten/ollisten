@@ -1,7 +1,8 @@
 import {useCallback, useEffect, useState} from "react";
 import Select, {Option} from "./Select.tsx";
-import {Llm, LlmModel} from "./system/llm.ts";
+import {Llm, LlmModel, LlmModelOptionSelectedEvent, LlmModeloptionsUpdatedEvent} from "./system/llm.ts";
 import {formatBytesToString} from "./util/unitConversion.ts";
+import {SubscriptionManager} from "./system/subscriptionManager.ts";
 
 export default function LlmModelSelect() {
 
@@ -11,7 +12,9 @@ export default function LlmModelSelect() {
     const [modelName, setModelName] = useState<string | null>(null);
 
     useEffect(() => {
-        return Llm.get().subscribeLlmModel(event => {
+        return SubscriptionManager.get().subscribe([
+            'llm-model-option-selected', 'llm-model-options-updated',
+        ], (event: LlmModelOptionSelectedEvent | LlmModeloptionsUpdatedEvent) => {
             switch (event.type) {
                 case 'llm-model-options-updated':
                     setOptions(event.options
@@ -20,6 +23,8 @@ export default function LlmModelSelect() {
                 case 'llm-model-option-selected':
                     setModelName(event.modelName);
                     break;
+                default:
+                    console.error(`Unexpected event: ${event}`);
             }
         });
     }, []);

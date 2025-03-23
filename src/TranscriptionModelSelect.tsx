@@ -1,6 +1,11 @@
 import {useCallback, useEffect, useState} from "react";
 import Select, {Option} from "./Select.tsx";
-import {Transcription} from "./system/transcription.ts";
+import {
+    Transcription,
+    TranscriptionModelOptionSelectedEvent,
+    TranscriptionModelOptionsUpdatedEvent
+} from "./system/transcription.ts";
+import {SubscriptionManager} from "./system/subscriptionManager.ts";
 
 export default function TranscriptionModelSelect() {
 
@@ -10,13 +15,21 @@ export default function TranscriptionModelSelect() {
     const [modelName, setModelName] = useState<string | null>(() => Transcription.get().getTranscriptionModelName());
 
     useEffect(() => {
-        return Transcription.get().subscribe((event) => {
+        return SubscriptionManager.get().subscribe([
+            'transcription-model-options-updated',
+            'transcription-model-option-selected',
+        ], (
+            event: TranscriptionModelOptionSelectedEvent | TranscriptionModelOptionsUpdatedEvent
+        ) => {
             switch (event.type) {
                 case 'transcription-model-options-updated':
                     setOptions(event.options.map(mapModelToOption));
                     break;
                 case 'transcription-model-option-selected':
                     setModelName(event.option);
+                    break;
+                default:
+                    console.error(`Unexpected event: ${event}`);
                     break;
             }
         });

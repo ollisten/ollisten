@@ -6,22 +6,40 @@ import OutputDeviceSelect from "./OutputDeviceSelect.tsx";
 import TranscriptionModelSelect from "./TranscriptionModelSelect.tsx";
 import LlmModelSelect from "./LlmModelSelect.tsx";
 import StartButton from "./StartButton.tsx";
+import Menu, {TabPanel, TabPanels} from "./Menu.tsx";
+import {useState} from "react";
+import AgentList from "./AgentList.tsx";
 
 function App() {
     const classes = useStyles();
+
+    const [activePage, setActivePage] = useState('quick-launch');
 
     return (
         <main
             data-tauri-drag-region
             className={classes.root}
         >
-            <TranscriptionModelSelect/>
-            <LlmModelSelect/>
-            <InputDeviceSelect/>
-            <OutputDeviceSelect/>
-            <StartButton/>
-            <StatusView/>
-            <TranscriptionView/>
+            <Menu activePage={activePage} onPageChange={setActivePage}/>
+
+            <TabPanels>
+                    <StatusView/>
+                <TabPanel tabPage='quick-launch' activePage={activePage}>
+                    <StartButton/>
+                </TabPanel>
+                <TabPanel tabPage='agents' activePage={activePage}>
+                    <AgentList/>
+                </TabPanel>
+                <TabPanel tabPage='transcription' activePage={activePage}>
+                    <InputDeviceSelect/>
+                    <OutputDeviceSelect/>
+                    <TranscriptionModelSelect/>
+                    <TranscriptionView/>
+                </TabPanel>
+                <TabPanel tabPage='llm-model' activePage={activePage}>
+                    <LlmModelSelect/>
+                </TabPanel>
+            </TabPanels>
         </main>
     );
 }

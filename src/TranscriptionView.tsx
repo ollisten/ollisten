@@ -1,6 +1,7 @@
 import {useEffect, useRef} from "react";
 import {useForceRender} from "./util/useForceRender.ts";
-import {Transcription} from "./system/transcription.ts";
+import {TranscriptionDataEvent} from "./system/transcription.ts";
+import {SubscriptionManager} from "./system/subscriptionManager.ts";
 
 function TranscriptionView() {
 
@@ -9,12 +10,14 @@ function TranscriptionView() {
     const transcriptionRef = useRef<string[]>([]);
 
     useEffect(() => {
-        return Transcription.get().subscribe((event) => {
+        return SubscriptionManager.get().subscribe('TranscriptionData', (event: TranscriptionDataEvent) => {
             switch (event.type) {
-                case 'transcription-data':
+                case 'TranscriptionData':
                     transcriptionRef.current.push(event.text);
                     forceRender();
                     break;
+                default:
+                    console.error(`Unexpected event: ${event}`);
             }
         });
     }, []);

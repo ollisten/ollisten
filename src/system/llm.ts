@@ -1,30 +1,27 @@
 import {invoke} from "@tauri-apps/api/core";
-import {emitTo, listen} from "@tauri-apps/api/event";
+import {SubscriptionManager} from "./subscriptionManager.ts";
 
 export type LlmModel = {
     name: string;
     size: number;
 }
 
-export type LlmModelEvent = {
+export type LlmModeloptionsUpdatedEvent = {
     type: 'llm-model-options-updated';
     options: LlmModel[];
-} | {
+}
+export type LlmModelOptionSelectedEvent = {
     type: 'llm-model-option-selected';
     modelName: string;
-} | {
+}
+export type LlmModelOptionsErrorEvent = {
     type: 'llm-model-options-error';
     msg: string;
 };
 
-export type ListenerLlmModel = (event: LlmModelEvent) => void;
-export type Unsubscribe = () => void;
-
 export class Llm {
 
     private static instance: Llm | null = null
-
-    private readonly listenersLlmModel: Set<ListenerLlmModel> = new Set();
     private llmModelOptions: LlmModel[] = [];
     private llmModelName: string | null = null;
 
@@ -61,18 +58,17 @@ export class Llm {
      * LLM Model options
      */
 
-    public subscribeLlmModel(listener: ListenerLlmModel): Unsubscribe {
-        this.listenersLlmModel.add(listener);
-        return () => {
-            this.listenersLlmModel.delete(listener);
-        }
-    }
-
     private async listenForLlmModelChanges() {
-        // Listen from llm-model-option-selected
-        await listen<string>('llm-model-option-selected', (event) => {
-            this.llmModelName = event.payload;
-            this.onEventLlmModel({type: 'llm-model-option-selected', modelName: event.payload});
+        SubscriptionManager.get().subscribe('llm-model-option-selected', (event: LlmModelOptionSelectedEvent) => {
+            switch (event.type) {
+                case "llm-model-option-selected":
+                    this.llmModelName = event.modelName;
+                    this.onEventLlmModel({type: 'llm-model-option-selected', modelName: event.modelName});
+                    break;
+                default:
+                    console.error(`Unexpected event: ${event}`);
+                    break;
+            }
         });
     }
 
@@ -81,16 +77,16 @@ export class Llm {
             const response = await invoke<LlmModel[]>("get_llm_model_options");
             console.log('Recv get_llm_model_options', response);
             if (response.length === 0) {
-                console.error('No LLM models available');
+                this.onError('No LLM models available');
                 return;
             }
             this.llmModelOptions = response;
             this.onEventLlmModel({type: 'llm-model-options-updated', options: response});
             if (this.llmModelName == null || response.findIndex(o => o.name === this.llmModelName) === -1) {
-                this.selectLlmModelName(response[0].name);
+                await this.selectLlmModelName(response[0].name);
             }
         } catch (e) {
-            this.onEventLlmModel({type: 'llm-model-options-error', msg: `Failed to get LLM model options: ${e}`});
+            this.onError(`Failed to get LLM model options: ${e}`);
         }
     }
 
@@ -103,16 +99,17 @@ export class Llm {
     }
 
     public async selectLlmModelName(newLlmModelName: string) {
-        await emitTo({kind: 'Any'}, 'llm-model-option-selected', newLlmModelName);
+        SubscriptionManager.get().sendExternal<LlmModelOptionSelectedEvent>({
+            type: 'llm-model-option-selected',
+            modelName: newLlmModelName,
+        });
     }
 
-    private onEventLlmModel(event: LlmModelEvent) {
-        this.listenersLlmModel.forEach(listener => {
-            try {
-                listener(event);
-            } catch (e) {
-                console.error('Error in event handler', e);
-            }
-        });
+    private onError(message: string) {
+        this.onEventLlmModel({type: 'llm-model-options-error', msg: message});
+    }
+
+    private onEventLlmModel(event: LlmModeloptionsUpdatedEvent | LlmModelOptionSelectedEvent | LlmModelOptionsErrorEvent) {
+        SubscriptionManager.get().sendExternal<typeof event>(event);
     }
 }

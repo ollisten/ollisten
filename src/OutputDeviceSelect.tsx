@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
 import Select, {Option} from "./Select.tsx";
-import {DeviceOption, Transcription} from "./system/transcription.ts";
+import {DeviceOption, DeviceOutputUpdatedEvent, Transcription} from "./system/transcription.ts";
+import {SubscriptionManager} from "./system/subscriptionManager.ts";
 
 export default function OutputDeviceSelect() {
 
@@ -9,10 +10,15 @@ export default function OutputDeviceSelect() {
         .getOutputDevice()));
 
     useEffect(() => {
-        return Transcription.get().subscribe((event) => {
+        return SubscriptionManager.get().subscribe('device-output-updated', (
+            event: DeviceOutputUpdatedEvent
+        ) => {
             switch (event.type) {
                 case 'device-output-updated':
                     setOption(mapDeviceToOption(event.option));
+                    break;
+                default:
+                    console.error(`Unexpected event: ${event}`);
                     break;
             }
         });

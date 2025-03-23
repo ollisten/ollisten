@@ -1,22 +1,22 @@
-import {AgentWorker} from "./agentWorker.ts";
 import Handlebars from "handlebars";
-import {Agent} from "./agentManager.ts";
+import {Agent, AgentManager, FileChangeEvent} from "./agentManager.ts";
 import {Llm} from "./llm.ts";
 import debounce, {DebouncedFunction} from "../util/debounce.ts";
-import {Transcription, Unsubscribe} from "./transcription.ts";
+import {TranscriptionDataEvent} from "./transcription.ts";
+import {SubscriptionManager, Unsubscribe} from "./subscriptionManager.ts";
+import {getCurrentWindow} from "@tauri-apps/api/window";
 
-type LlmResponse = {
+export type LlmResponseEvent = {
+    type: 'llm-response';
     prompt: string;
     answer: string;
 }
-type DebouncedInvoke = DebouncedFunction<[], LlmResponse>;
-type Listener = (response: LlmResponse) => void;
+type DebouncedInvoke = DebouncedFunction<[], LlmResponseEvent>;
 
 export class Prompter {
 
     private static instance: Prompter | null = null
     private debouncedInvoke: DebouncedInvoke;
-    private listener: Listener | null = null;
     private transcriptionUnsubscribe: Unsubscribe | null = null;
     private transcriptionHistory: string[] = [];
     private transcriptionLatest: string[] = [];
@@ -29,40 +29,52 @@ export class Prompter {
     }
 
     private constructor() {
-        AgentWorker.get().subscribe(agent => {
-            this.debouncedInvoke = this.prepareInvocation(agent);
-        })
-        this.debouncedInvoke = this.prepareInvocation(AgentWorker.get().getAgent());
+        this.debouncedInvoke = this.prepareInvocation(AgentManager.get().clientGetAgentConfig().agent);
     }
 
-    public start(listener: Listener) {
-        this.listener = listener
+    public start(): Unsubscribe {
+        if (this.transcriptionUnsubscribe) {
+            return () => {
+            };
+        }
 
-        this.transcriptionUnsubscribe = Transcription.get().subscribe(event => {
-            if (event.type !== 'transcription-data') return;
-
-            this.transcriptionHistory.push(event.text);
-            this.transcriptionLatest.push(event.text);
-
-            this.debouncedInvoke()
-                .then(response => {
-                    if (this.listener) {
-                        this.listener(response);
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                });
+        this.transcriptionUnsubscribe = SubscriptionManager.get().subscribe([
+            'TranscriptionData', 'FileAgentCreated', 'FileAgentDeleted', 'FileAgentModified',
+        ], (
+            event: TranscriptionDataEvent | FileChangeEvent
+        ) => {
+            switch (event.type) {
+                case 'TranscriptionData':
+                    this.transcriptionHistory.push(event.text);
+                    this.transcriptionLatest.push(event.text);
+                    this.debouncedInvoke()
+                        .then(response => {
+                            SubscriptionManager.get().sendInternal(response);
+                        })
+                        .catch(err => {
+                            console.error(err);
+                        });
+                    break;
+                case 'FileAgentDeleted':
+                    getCurrentWindow().destroy();
+                    break;
+                case 'FileAgentCreated':
+                case 'FileAgentModified':
+                    this.prepareInvocation(event.agent)
+                    break;
+                default:
+                    console.error(`Unexpected event: ${event}`);
+                    break;
+            }
         });
-    }
 
-    public stop() {
-        this.transcriptionUnsubscribe?.();
-        this.transcriptionUnsubscribe = null;
-        this.debouncedInvoke.cancel();
-        this.listener = null;
-        this.transcriptionHistory.push(this.transcriptionLatest.join("\n"));
-        this.transcriptionLatest = [];
+        return () => {
+            this.transcriptionUnsubscribe?.();
+            this.transcriptionUnsubscribe = null;
+            this.debouncedInvoke.cancel();
+            this.transcriptionHistory.push(this.transcriptionLatest.join("\n"));
+            this.transcriptionLatest = [];
+        };
     }
 
     private prepareInvocation(agent: Agent): DebouncedInvoke {
@@ -72,13 +84,12 @@ export class Prompter {
             const transcriptionHistory = this.transcriptionHistory.join("\n");
             const transcriptionLatest = this.transcriptionLatest.join("\n");
             this.transcriptionLatest = [];
-            console.log("Invoking LLM", transcriptionLatest);
             const prompt = template(this.getTemplateInput(
                 transcriptionHistory,
                 transcriptionLatest,
             ));
             const answer = await Llm.get().talk(prompt);
-            return {prompt, answer};
+            return {type: 'llm-response', prompt, answer};
         }, intervalInSec, true);
     }
 

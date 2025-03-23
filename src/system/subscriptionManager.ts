@@ -1,0 +1,109 @@
+import {emitTo, listen} from "@tauri-apps/api/event";
+import {Channel} from "@tauri-apps/api/core";
+
+
+export type Event = {
+    type: string;
+};
+export type Listener<E extends Event> = (event: E) => void;
+export type Unsubscribe = () => void;
+
+export class SubscriptionManager {
+
+    private static instance: SubscriptionManager | null = null
+    private readonly eventTypeToListeners: Map<string, Set<Listener<any>>> = new Map();
+    private readonly eventTypeToExternalListenerUnsubscribe: Map<string, Unsubscribe> = new Map();
+    private readonly currentlyProcessingType: Set<string> = new Set();
+
+    static get = () => {
+        if (!SubscriptionManager.instance) {
+            SubscriptionManager.instance = new SubscriptionManager();
+        }
+        return SubscriptionManager.instance;
+    }
+
+
+    public subscribe<E extends Event, T extends E['type']>(types: T | Array<T> | Set<T>, listener: Listener<E>): Unsubscribe {
+        if (typeof types === 'string') {
+            types = new Set([types]);
+        } else if (types instanceof Array) {
+            types = new Set(types);
+        }
+
+        const subscribePromises: Promise<void>[] = [];
+        for (const type of types) {
+            if (!this.eventTypeToListeners.has(type)) {
+                this.eventTypeToListeners.set(type, new Set());
+                subscribePromises.push(this.subscribeExternal(type));
+            }
+            this.eventTypeToListeners.get(type)!.add(listener);
+        }
+        return () => {
+            Promise.all(subscribePromises).then(async () => {
+                for (const type of types) {
+                    let listeners = this.eventTypeToListeners.get(type);
+                    if (listeners) {
+                        listeners.delete(listener);
+                        if (listeners.size === 0) {
+                            this.eventTypeToListeners.delete(type);
+                            await this.unsubscribeExternal(type);
+                        }
+                    }
+                }
+            })
+        }
+    }
+
+    private async subscribeExternal(type: string) {
+        if (this.eventTypeToExternalListenerUnsubscribe.has(type)) {
+            return;
+        }
+        const unsubscribe = await listen<any>(type, (event) => {
+            this.sendInternal(event.payload);
+        });
+        this.eventTypeToExternalListenerUnsubscribe.set(type, unsubscribe);
+    }
+
+    private async unsubscribeExternal(type: string) {
+        const unsubscribe = this.eventTypeToExternalListenerUnsubscribe.get(type);
+        if (unsubscribe) {
+            unsubscribe();
+            this.eventTypeToExternalListenerUnsubscribe.delete(type);
+        }
+    }
+
+    public sendInternal<E extends Event>(event: E) {
+        if (this.currentlyProcessingType.has(event.type)) {
+            throw new Error(`Event loop detected for event type: ${event.type}`);
+        }
+        this.currentlyProcessingType.add(event.type);
+        const listeners = this.eventTypeToListeners.get(event.type);
+        if (listeners) {
+            listeners.forEach(listener => {
+                try {
+                    listener(event);
+                } catch (err) {
+                    console.error(`Failed processing event ${event.type}: ${err}`, event);
+                }
+            });
+        }
+        this.currentlyProcessingType.delete(event.type);
+    }
+
+    public async sendExternal<E extends Event>(event: E) {
+        await emitTo({kind: 'Any'}, event.type, event);
+    }
+
+    public async send<E extends Event>(event: E) {
+        this.sendInternal(event);
+        await this.sendExternal(event);
+    }
+
+    public createChannel<E extends Event>() {
+        const channel = new Channel<E>();
+        channel.onmessage = async event => {
+            this.sendInternal(event);
+        };
+        return channel;
+    }
+}

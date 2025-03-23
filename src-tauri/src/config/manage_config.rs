@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Agent {
-    pub interval_in_sec: Option<f64>,
+    pub rval_in_secmin_: Option<f64>,
     pub prompt: String,
 }
 
@@ -22,15 +22,15 @@ pub struct AgentConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum EventType {
-    Created,
-    Modified,
-    Deleted,
+    FileAgentCreated,
+    FileAgentModified,
+    FileAgentDeleted,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FileChangeEvent {
-    pub event_type: EventType,
+    pub r#type: EventType,
     pub name: String,
     // Content for created/modified files, None for deleted
     pub agent: Option<Agent>,
@@ -165,15 +165,15 @@ async fn start_config_watcher(
 
                         // Determine event type
                         let event_type = match event.kind {
-                            notify::EventKind::Create(_) => EventType::Created,
-                            notify::EventKind::Modify(_) => EventType::Modified,
-                            notify::EventKind::Remove(_) => EventType::Deleted,
+                            notify::EventKind::Create(_) => EventType::FileAgentCreated,
+                            notify::EventKind::Modify(_) => EventType::FileAgentModified,
+                            notify::EventKind::Remove(_) => EventType::FileAgentDeleted,
                             _ => return, // Ignore other events
                         };
 
                         // For created or modified files, read the content
                         let agent = match event_type {
-                            EventType::Deleted => None,
+                            EventType::FileAgentDeleted => None,
                             _ => match std::fs::read_to_string(path) {
                                 Ok(content) => Some(match parse_agent(&content) {
                                     Ok(agent) => agent,
@@ -192,7 +192,7 @@ async fn start_config_watcher(
                         // Create event payload
                         let agent_name = parse_name_from_file_path(&path);
                         let file_event = FileChangeEvent {
-                            event_type,
+                            r#type: event_type,
                             name: agent_name,
                             agent,
                         };
@@ -234,8 +234,8 @@ fn parse_agent(content: &str) -> Result<Agent, String> {
 }
 
 /// parse file name without extension via PathBug
-fn parse_name_from_file_path(pathBuf: &PathBuf) -> String {
-    pathBuf
+fn parse_name_from_file_path(path_buf: &PathBuf) -> String {
+    path_buf
         .as_path()
         .file_name()
         .unwrap()

@@ -2,18 +2,18 @@ use serde::Serialize;
 
 // Event types for the transcription channel
 #[derive(Debug, Serialize, Clone)]
-#[serde(tag = "event", content = "data")]
+#[serde(tag = "type")]
 pub enum TranscriptionEvent {
     #[serde(rename_all = "camelCase")]
-    Starting,
+    TranscriptionStarting,
     #[serde(rename_all = "camelCase")]
-    DownloadProgress {
+    TranscriptionDownloadProgress {
         source: String,
         size: u64,
         progress: u64,
     },
     #[serde(rename_all = "camelCase")]
-    LoadingProgress {
+    TranscriptionLoadingProgress {
         progress: f32, // from 0 to 1
     },
     #[serde(rename_all = "camelCase")]
@@ -25,7 +25,7 @@ pub enum TranscriptionEvent {
         confidence: f64,
     },
     #[serde(rename_all = "camelCase")]
-    Error { message: String },
+    TranscriptionError { message: String },
     #[serde(rename_all = "camelCase")]
-    Stopped,
+    TranscriptionStopped,
 }

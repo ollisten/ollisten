@@ -1,9 +1,17 @@
 import {useEffect} from "react";
 import {useForceRender} from "./util/useForceRender.ts";
-import {Status, Transcription} from "./system/transcription.ts";
+import {
+    DeviceInputOptionSelectedEvent,
+    DeviceOutputUpdatedEvent,
+    Status,
+    StatusChangeEvent,
+    Transcription,
+    TranscriptionModelOptionSelectedEvent
+} from "./system/transcription.ts";
 import {Button} from "@mui/material";
 import {AgentManager} from "./system/agentManager.ts";
-import {Llm} from "./system/llm.ts";
+import {Llm, LlmModelOptionSelectedEvent} from "./system/llm.ts";
+import {SubscriptionManager} from "./system/subscriptionManager.ts";
 
 enum ButtonState {
     Start,
@@ -15,21 +23,14 @@ function StartButton() {
     const forceRender = useForceRender();
 
     useEffect(() => {
-        return Transcription.get().subscribe((event) => {
+        return SubscriptionManager.get().subscribe([
+            'device-output-updated', 'llm-model-option-selected', 'status-change', 'device-input-option-selected', 'transcription-model-option-selected',
+        ], (event: StatusChangeEvent | DeviceInputOptionSelectedEvent | TranscriptionModelOptionSelectedEvent | DeviceOutputUpdatedEvent | LlmModelOptionSelectedEvent) => {
             switch (event.type) {
                 case 'device-input-option-selected':
                 case 'transcription-model-option-selected':
                 case 'device-output-updated':
                 case 'status-change':
-                    forceRender(); // Llm.canStart() may have changed
-                    break;
-            }
-        });
-    }, []);
-
-    useEffect(() => {
-        return Llm.get().subscribeLlmModel(event => {
-            switch (event.type) {
                 case 'llm-model-option-selected':
                     forceRender(); // Llm.canStart() may have changed
                     break;

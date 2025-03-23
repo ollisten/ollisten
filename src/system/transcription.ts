@@ -1,35 +1,6 @@
-import {Channel, invoke} from "@tauri-apps/api/core";
-import {formatBytesToString} from "../util/unitConversion.ts";
+import {invoke} from "@tauri-apps/api/core";
+import {SubscriptionManager} from "./subscriptionManager.ts";
 
-export type Event = {
-    type: 'status-change';
-    status: Status;
-} | {
-    type: 'loading-progress';
-    progressStr: string;
-} | {
-    type: 'transcription-model-options-updated';
-    options: string[];
-} | {
-    type: 'transcription-model-option-selected';
-    option: string;
-} | {
-    type: 'device-input-options-updated';
-    options: DeviceOption[];
-} | {
-    type: 'device-input-option-selected';
-    option: number;
-} | {
-    // There is no selection, so whatever we get, we select automatically
-    type: 'device-output-updated';
-    option: DeviceOption | null;
-} | {
-    type: 'transcription-data';
-    text: string;
-} | {
-    type: 'error';
-    msg: string;
-}
 
 export type DeviceOption = {
     name: string;
@@ -48,44 +19,70 @@ export enum Status {
 export type Listener = (event: Event) => void;
 export type Unsubscribe = () => void;
 
-type SessionEvent = {
-    event: 'DownloadProgress';
-    data: {
-        source: string;
-        size: number; // total size
-        progress: number; // Downloaded size
-    };
-} | {
-    event: 'LoadingProgress';
-    data: {
-        progress: number; // From 0 to 1
-    };
-} | {
-    event: 'TranscriptionStarted';
-    data: {
-        deviceName: string;
-    };
-} | {
-    event: 'TranscriptionData';
-    data: {
-        deviceId: number,
-        text: string,
-        confidence: number,
-    };
-} | {
-    event: 'Error';
-    data: {
-        message: string,
-    };
-} | {
-    event: 'Stopped';
+/*
+ * Rust events
+ */
+export type DownloadProgressEvent = {
+    type: 'TranscriptionDownloadProgress';
+    source: string;
+    size: number; // total size
+    progress: number; // Downloaded size
+};
+export type LoadingProgressEvent = {
+    type: 'TranscriptionLoadingProgress';
+    progress: number; // From 0 to 1
+};
+export type TranscriptionStartedEvent = {
+    type: 'TranscriptionStarted';
+    deviceName: string;
+};
+export type TranscriptionDataEvent = {
+    type: 'TranscriptionData';
+    deviceId: number,
+    text: string,
+    confidence: number,
+};
+export type ErrorEvent = {
+    type: 'TranscriptionError';
+    message: string,
+};
+export type StoppedEvent = {
+    type: 'TranscriptionStopped';
+};
+
+/*
+ * Our internal events
+ */
+export type StatusChangeEvent = {
+    type: 'status-change';
+    status: Status;
+};
+export type TranscriptionModelOptionSelectedEvent = {
+    type: 'transcription-model-option-selected';
+    option: string;
+};
+export type TranscriptionModelOptionsUpdatedEvent = {
+    type: 'transcription-model-options-updated';
+    options: string[];
+};
+export type DeviceInputOptionSelectedEvent = {
+    type: 'device-input-option-selected';
+    option: number;
+};
+export type DeviceInputOptionsUpdatedEvent = {
+    type: 'device-input-options-updated';
+    options: DeviceOption[];
+};
+export type DeviceOutputUpdatedEvent = {
+    // There is no selection, so whatever we get, we select automatically
+    type: 'device-output-updated';
+    option: DeviceOption | null;
 };
 
 export class Transcription {
 
     private static instance: Transcription | null = null
-    private readonly listeners: Set<Listener> = new Set();
-    private readonly sessionChannel = new Channel<SessionEvent>();
+    private unsubscribe: Unsubscribe | null = null;
     private readonly subscriberName = Math.random().toString(36).substring(7);
 
     static get = () => {
@@ -137,15 +134,53 @@ export class Transcription {
     }
 
     private async subscribeTranscription() {
-        this.sessionChannel.onmessage = sessionEvent => this.onSessionEvent(sessionEvent);
-        try {
-            await invoke('transcription_subscribe', {
-                sessionChannel: this.sessionChannel,
-                subscriberName: this.subscriberName,
-            });
-        } catch (err) {
-            this.onError(`Failed to subscribe to transcription events: ${err}`);
+        if (this.unsubscribe) {
+            return; // Already subscribed
         }
+
+        // Setup event handler
+        const unsubscribeEventHandler = SubscriptionManager.get().subscribe([
+            'TranscriptionDownloadProgress', 'TranscriptionLoadingProgress', 'TranscriptionStarted', 'TranscriptionError', 'TranscriptionStopped'
+        ], (
+            event: DownloadProgressEvent | LoadingProgressEvent | TranscriptionStartedEvent | ErrorEvent | StoppedEvent
+        ) => {
+            switch (event.type) {
+                case "TranscriptionDownloadProgress":
+                    if (this.getStatus() !== Status.ModelDownloading) {
+                        this.setStatus(Status.ModelDownloading);
+                    }
+                    break;
+                case "TranscriptionLoadingProgress":
+                    if (this.getStatus() !== Status.ModelLoading) {
+                        this.setStatus(Status.ModelLoading);
+                    }
+                    break;
+                case "TranscriptionStarted":
+                    this.setStatus(Status.TranscriptionStarted);
+                    break;
+                case "TranscriptionStopped":
+                    this.setStatus(Status.Stopped);
+                    break;
+                case "TranscriptionError":
+                    console.error('Received transcription error', event.message);
+                    break;
+                default:
+                    console.error(`Unexpected event`, event);
+                    break;
+            }
+        });
+
+        // Subscribe to events from Rust
+        const channel = SubscriptionManager.get().createChannel();
+        await invoke('transcription_subscribe', {
+            sessionChannel: channel,
+            subscriberName: this.subscriberName,
+        });
+
+        this.unsubscribe = () => {
+            unsubscribeEventHandler();
+            channel.onmessage = () => {};
+        };
     }
 
     private async unsubscribeTranscription() {
@@ -334,71 +369,14 @@ export class Transcription {
         this.restartTranscriptionIfRunning();
     }
 
-    /*
-     * Utility methods
-     */
-
-    public subscribe(listener: Listener): Unsubscribe {
-        this.listeners.add(listener);
-        return () => {
-            this.listeners.delete(listener);
-        }
+    onEvent(event: StatusChangeEvent | TranscriptionModelOptionSelectedEvent | TranscriptionModelOptionsUpdatedEvent | DeviceInputOptionSelectedEvent | DeviceOutputUpdatedEvent | DeviceInputOptionsUpdatedEvent) {
+        SubscriptionManager.get().sendInternal(event);
     }
 
-    private onError(message: string) {
-        this.onEvent({type: 'error', msg: message});
-    }
-
-    private onEvent(event: Event) {
-        this.listeners.forEach(listener => {
-            try {
-                listener(event);
-            } catch (e) {
-                console.error('Error in event handler', e);
-                if (event.type !== 'error') {
-                    this.onError(`Failed processing event ${event.type}: ${e}`);
-                }
-            }
+    onError(message: string) {
+        SubscriptionManager.get().sendInternal<ErrorEvent>({
+            type: 'TranscriptionError',
+            message: message,
         });
-    }
-
-    private onSessionEvent(event: SessionEvent) {
-        switch (event.event) {
-            case "DownloadProgress":
-                if (this.getStatus() !== Status.ModelDownloading) {
-                    this.setStatus(Status.ModelDownloading);
-                }
-                this.onEvent({
-                    type: 'loading-progress',
-                    progressStr: `Downloaded: ${formatBytesToString(event.data.progress)} / ${formatBytesToString(event.data.size)}`
-                });
-                break;
-            case "LoadingProgress":
-                if (this.getStatus() !== Status.ModelLoading) {
-                    this.setStatus(Status.ModelLoading);
-                }
-                this.onEvent({
-                    type: 'loading-progress',
-                    progressStr: `Loaded: ${Math.round(event.data.progress * 100)}%`
-                });
-                break;
-            case "TranscriptionStarted":
-                this.setStatus(Status.TranscriptionStarted);
-                break;
-            case "Stopped":
-                this.setStatus(Status.Stopped);
-                break;
-            case "TranscriptionData":
-                this.onEvent({
-                    type: 'transcription-data',
-                    text: event.data.text,
-                })
-                break;
-            case "Error":
-                console.error('Received transcription error', event.data.message);
-                break;
-            default:
-                break;
-        }
     }
 }

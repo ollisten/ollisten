@@ -1,6 +1,7 @@
 import {makeStyles} from "@mui/styles";
 import {useEffect, useState} from "react";
-import {Prompter} from "./system/prompter.ts";
+import {LlmResponseEvent, Prompter} from "./system/prompter.ts";
+import {SubscriptionManager} from "./system/subscriptionManager.ts";
 
 function App() {
     const classes = useStyles();
@@ -10,11 +11,23 @@ function App() {
     const [answer, setAnswer] = useState<string | null>(null);
 
     useEffect(() => {
-        Prompter.get().start(llmResponse => {
-            setPrompt(llmResponse.prompt);
-            setAnswer(llmResponse.answer);
+        return SubscriptionManager.get().subscribe('llm-response', (
+            event: LlmResponseEvent
+        ) => {
+            switch (event.type) {
+                case 'llm-response':
+                    setPrompt(event.prompt);
+                    setAnswer(event.answer);
+                    break;
+                default:
+                    console.error(`Unexpected event: ${event}`);
+                    break;
+            }
         });
-        return () => Prompter.get().stop();
+    }, []);
+
+    useEffect(() => {
+        return Prompter.get().start();
     }, []);
 
     return (
@@ -25,7 +38,7 @@ function App() {
             <div
                 data-tauri-drag-region
             >
-            {answer || ''}
+                {answer || ''}
             </div>
         </main>
     );

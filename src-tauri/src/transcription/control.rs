@@ -60,7 +60,7 @@ pub async fn start_transcription(
     let listeners = Arc::clone(&state.listeners);
 
     // Emit model initializing event
-    send_event(&listeners, TranscriptionEvent::Starting)
+    send_event(&listeners, TranscriptionEvent::TranscriptionStarting)
         .await
         .map_err(|e| format!("Failed to send started event: {}", e))?;
 
@@ -83,14 +83,15 @@ pub async fn start_transcription(
         .with_source(model_type.to_whisper_source())
         .build_with_loading_handler(move |loading| match loading {
             ModelLoadingProgress::Downloading { source, progress } => {
-                let _ = tx_clone.try_send(TranscriptionEvent::DownloadProgress {
+                let _ = tx_clone.try_send(TranscriptionEvent::TranscriptionDownloadProgress {
                     source: source.to_string(),
                     size: progress.size,
                     progress: progress.progress,
                 });
             }
             ModelLoadingProgress::Loading { progress } => {
-                let _ = tx_clone.try_send(TranscriptionEvent::LoadingProgress { progress });
+                let _ = tx_clone
+                    .try_send(TranscriptionEvent::TranscriptionLoadingProgress { progress });
             }
         })
         .await
@@ -185,7 +186,7 @@ pub async fn stop_transcription(state: State<'_, TranscriptionState>) -> Result<
     }
 
     // Emit model initializing event
-    send_event(&state.listeners, TranscriptionEvent::Stopped)
+    send_event(&state.listeners, TranscriptionEvent::TranscriptionStopped)
         .await
         .map_err(|e| format!("Failed to send stopped event: {}", e))?;
 
