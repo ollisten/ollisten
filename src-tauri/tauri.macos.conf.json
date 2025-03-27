@@ -3,6 +3,9 @@
   "bundle": {
     "resources": {
       "resources/LocalEcho.pkg": "resources/LocalEcho.pkg"
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
     }
   }
 }

@@ -1,13 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
 import MuiWrapper from "./MuiWrapper.tsx";
 import './common.ts'
+import AppAgentEdit from "./AppAgentEdit.tsx";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>
         <MuiWrapper>
-            <App/>
+            <AppAgentEdit/>
         </MuiWrapper>
     </React.StrictMode>,
 );

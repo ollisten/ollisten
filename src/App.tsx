@@ -9,34 +9,44 @@ import StartButton from "./StartButton.tsx";
 import Menu, {TabPanel, TabPanels} from "./Menu.tsx";
 import {useState} from "react";
 import AgentList from "./AgentList.tsx";
+import {InstallDriverNotice} from "./InstallDriverNotice.tsx";
+import {useAppConfig} from "./util/useAppConfig.ts";
+import {InstallStartOllamaNotice} from "./InstallStartOllamaNotice.tsx";
 
-function App() {
+export default function App() {
     const classes = useStyles();
 
     const [activePage, setActivePage] = useState('quick-launch');
+    const {loading} = useAppConfig();
+
+    if (loading) {
+        return null;
+    }
 
     return (
         <main
-            data-tauri-drag-region
             className={classes.root}
         >
+            <StatusView/>
             <Menu activePage={activePage} onPageChange={setActivePage}/>
-
             <TabPanels>
-                    <StatusView/>
                 <TabPanel tabPage='quick-launch' activePage={activePage}>
-                    <StartButton/>
+                    <InstallStartOllamaNotice/>
+                    <InstallDriverNotice/>
+                    <StartButton startTranscription startAgents/>
                 </TabPanel>
                 <TabPanel tabPage='agents' activePage={activePage}>
                     <AgentList/>
                 </TabPanel>
                 <TabPanel tabPage='transcription' activePage={activePage}>
+                    <InstallDriverNotice/>
                     <InputDeviceSelect/>
                     <OutputDeviceSelect/>
                     <TranscriptionModelSelect/>
                     <TranscriptionView/>
                 </TabPanel>
                 <TabPanel tabPage='llm-model' activePage={activePage}>
+                    <InstallStartOllamaNotice/>
                     <LlmModelSelect/>
                 </TabPanel>
             </TabPanels>
@@ -48,9 +58,6 @@ const useStyles = makeStyles({
     root: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '1rem',
         margin: '1rem',
     },
 });
-
-export default App;

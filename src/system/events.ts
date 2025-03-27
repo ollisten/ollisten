@@ -8,18 +8,18 @@ export type Event = {
 export type Listener<E extends Event> = (event: E) => void;
 export type Unsubscribe = () => void;
 
-export class SubscriptionManager {
+export class Events {
 
-    private static instance: SubscriptionManager | null = null
+    private static instance: Events | null = null
     private readonly eventTypeToListeners: Map<string, Set<Listener<any>>> = new Map();
     private readonly eventTypeToExternalListenerUnsubscribe: Map<string, Unsubscribe> = new Map();
     private readonly currentlyProcessingType: Set<string> = new Set();
 
     static get = () => {
-        if (!SubscriptionManager.instance) {
-            SubscriptionManager.instance = new SubscriptionManager();
+        if (!Events.instance) {
+            Events.instance = new Events();
         }
-        return SubscriptionManager.instance;
+        return Events.instance;
     }
 
 

@@ -6,17 +6,26 @@ import {
     DeviceOption,
     Transcription
 } from "./system/transcription.ts";
-import {SubscriptionManager} from "./system/subscriptionManager.ts";
+import {Events} from "./system/events.ts";
+import {makeStyles} from "@mui/styles";
+
+const useStyles = makeStyles({
+    root: {
+        margin: '1rem',
+    },
+});
 
 export default function InputDeviceSelect() {
 
+    const classes = useStyles();
     const [options, setOptions] = useState<Option[]>(() => Transcription.get()
         .getInputDeviceOptions()
         .map(mapDeviceToOption));
-    const [deviceId, setDeviceId] = useState<string | null>(() => mapDeviceIdToString(Transcription.get().getInputDeviceId()));
+    const [deviceId, setDeviceId] = useState<string | null>(() => mapDeviceIdToString(Transcription.get()
+        .getInputDeviceId()));
 
     useEffect(() => {
-        return SubscriptionManager.get().subscribe([
+        return Events.get().subscribe([
             'device-input-options-updated',
             'device-input-option-selected',
         ], (
@@ -38,7 +47,8 @@ export default function InputDeviceSelect() {
 
     return (
         <Select
-            label='Output device'
+            className={classes.root}
+            label='Input device'
             value={deviceId}
             options={options}
             onSelect={useCallback((newValue: string) => {

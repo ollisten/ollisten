@@ -1,10 +1,11 @@
 import {invoke} from "@tauri-apps/api/core";
 import {WebviewWindow} from "@tauri-apps/api/webviewWindow";
-import {Llm} from "./llm.ts";
-import {SubscriptionManager} from "./subscriptionManager.ts";
+import {Events} from "./events.ts";
+import {getAppConfig} from "../util/useAppConfig.ts";
+import {currentMonitor} from "@tauri-apps/api/window";
 
 export interface Agent {
-    intervalInSec: number;
+    intervalInSec?: number;
     prompt: string;
 }
 
@@ -16,10 +17,10 @@ export interface AgentConfig {
 export type FileChangeEvent = {
     name: string;
 } & ({
-    type: 'FileAgentCreated' | 'FileAgentModified';
+    type: 'file-agent-created' | 'file-agent-modified';
     agent: Agent;
 } | {
-    type: 'FileAgentDeleted';
+    type: 'file-agent-deleted';
 })
 
 export class AgentManager {
@@ -37,22 +38,26 @@ export class AgentManager {
         return AgentManager.instance;
     }
 
+    public async getAllAgentConfigs(): Promise<AgentConfig[]> {
+        return await invoke<AgentConfig[]>('get_all_agent_configs');
+    }
+
     public async managerStart() {
-        const agentConfigs = await invoke<AgentConfig[]>('get_all_agent_configs');
+        const agentConfigs = await this.getAllAgentConfigs();
         console.log(`Got agent configs: ${JSON.stringify(agentConfigs)}`);
 
         agentConfigs.forEach(agentConfig => {
             this.startAgent(agentConfig);
         })
 
-        this.monitorUnlisten = SubscriptionManager.get().subscribe([
-            'FileAgentCreated', 'FileAgentDeleted',
+        this.monitorUnlisten = Events.get().subscribe([
+            'file-agent-created', 'file-agent-deleted',
         ], (event: FileChangeEvent) => {
             switch (event.type) {
-                case 'FileAgentCreated':
+                case 'file-agent-created':
                     this.startAgent(event);
                     break;
-                case 'FileAgentDeleted':
+                case 'file-agent-deleted':
                     const webview = this.agentWindows[event.name];
                     if (webview) {
                         webview.destroy();
@@ -63,31 +68,44 @@ export class AgentManager {
         });
     }
 
-    private startAgent(agentConfig: AgentConfig) {
+    private async startAgent(agentConfig: AgentConfig) {
         if (this.agentWindows[agentConfig.name]) {
             return;
         }
 
-        const windowName = `agent-${agentConfig.name}`;
-        const webview = new WebviewWindow(windowName, {
-            url: `agent.html?llmModelName=${encodeURIComponent(Llm.get().getLlmModelName() || '')}&agentConfig=${encodeURIComponent(JSON.stringify(agentConfig))}`,
+        const windowLabel = `agent-${agentConfig.name}`;
+        const windowProps = getAppConfig().windowProps?.[windowLabel];
+        const width = windowProps?.width || 800;
+        const height = windowProps?.height || 250;
+        let x = windowProps?.x || 100;
+        let y = windowProps?.y || 100;
+
+        // Constrain the window to the monitor
+        x = Math.max(x, 0);
+        y = Math.max(y, 0);
+        const monitor = await currentMonitor();
+        if (monitor) {
+            const monitorSize = monitor.size.toLogical(monitor.scaleFactor);
+            x = Math.min(x, monitorSize.width - width);
+            y = Math.min(y, monitorSize.height - height);
+        }
+
+        const webview = new WebviewWindow(windowLabel, {
+            url: `agent.html?agentConfig=${encodeURIComponent(JSON.stringify(agentConfig))}`,
             title: 'Agent',
-            width: 800,
-            height: 250,
-            x: 100,
-            y: 100,
+            width,
+            height,
+            x,
+            y,
             decorations: false,
             resizable: true,
             alwaysOnTop: true,
             transparent: true,
-            visible: false,
+            visible: true,
+            contentProtected: true,
         });
         webview.once('tauri://created', () => {
             console.log(`Window successfully created for agent ${agentConfig.name}`);
-            invoke<void>('setup_agent_window', {
-                windowLabel: webview.label,
-            })
-                .catch((err: Error) => console.log("Failed to setup agent window", err));
         });
         webview.once('tauri://error', (e) => {
             delete this.agentWindows[agentConfig.name];
@@ -107,6 +125,7 @@ export class AgentManager {
         Object.values(this.agentWindows).forEach(webview => {
             webview.destroy();
         });
+        this.agentWindows = {};
     }
 
     public clientGetAgentConfig(): AgentConfig {

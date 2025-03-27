@@ -1,20 +1,40 @@
 import {makeStyles} from "@mui/styles";
-import {DeviceInputOptionSelectedEvent} from "./system/transcription.ts";
-import {useEffect} from "react";
-import {SubscriptionManager} from "./system/subscriptionManager.ts";
+import {useCallback, useEffect, useRef} from "react";
+import {Events} from "./system/events.ts";
+import {Agent, AgentConfig, AgentManager, FileChangeEvent} from "./system/agentManager.ts";
+import {useForceRender} from "./util/useForceRender.ts";
+import {Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
+import {WebviewWindow} from "@tauri-apps/api/webviewWindow";
+import {getCurrentWindow} from "@tauri-apps/api/window";
 
 export default function AgentList() {
     const classes = useStyles();
 
-    // TODO
+    const forceRender = useForceRender();
+    const agentsRef = useRef<{ [name: string]: Agent }>({});
+
     useEffect(() => {
-        return SubscriptionManager.get().subscribe([
-            'device-input-option-selected',
+        AgentManager.get().getAllAgentConfigs().then((agentConfigs: AgentConfig[]) => {
+            agentConfigs.forEach(agentConfig => {
+                agentsRef.current[agentConfig.name] = agentConfig.agent;
+            })
+            forceRender();
+        });
+
+        return Events.get().subscribe([
+            'file-agent-created', 'file-agent-deleted', 'file-agent-modified'
         ], (
-            event: DeviceInputOptionSelectedEvent
+            event: FileChangeEvent
         ) => {
             switch (event.type) {
-                case 'device-input-option-selected':
+                case 'file-agent-created':
+                case 'file-agent-modified':
+                    agentsRef.current[event.name] = event.agent;
+                    forceRender();
+                    break;
+                case 'file-agent-deleted':
+                    delete agentsRef.current[event.name];
+                    forceRender();
                     break;
                 default:
                     console.error(`Unexpected event: ${event}`);
@@ -23,13 +43,82 @@ export default function AgentList() {
         });
     }, []);
 
+    const openAgentEdit = useCallback((name: string, agent: Agent) => {
+        const windowLabel = `agentEdit-${Math.random().toString(36).substring(7)}`;
+        const agentConfig: AgentConfig = {name, agent};
+        const webview = new WebviewWindow(windowLabel, {
+            url: `agent-edit.html?agentConfig=${encodeURIComponent(JSON.stringify(agentConfig))}`,
+            title: 'Agent',
+            center: true,
+            width: 500,
+            height: 700,
+            resizable: true,
+            parent: getCurrentWindow(),
+            visible: true,
+            contentProtected: true,
+        });
+        webview.once('tauri://created', () => {
+            console.log(`Window successfully created for agent edit ${agentConfig.name}`);
+        });
+        webview.once('tauri://error', (e) => {
+            console.error('Error creating window:', e);
+        });
+        webview.once('tauri://closed', () => {
+            console.log('Window closed');
+        });
+    }, []);
+
     return (
         <div>
-
+            {!!Object.keys(agentsRef.current).length && (
+            <TableContainer component={Paper}>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Prompt</TableCell>
+                            <TableCell></TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {Object.entries(agentsRef.current).map(([name, agent]) => (
+                            <TableRow key={name}>
+                                <TableCell component="th" scope="row">
+                                    {name}
+                                </TableCell>
+                                <TableCell component="th" scope="row">
+                                    <span className={classes.ellipsis}>
+                                        {agent.prompt}
+                                    </span>
+                                </TableCell>
+                                <TableCell component="th" scope="row">
+                                    <Button onClick={() => openAgentEdit(name, agent)}>Edit</Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+            )}
+            <Button
+                className={classes.createButton}
+                onClick={() => openAgentEdit('', {prompt: '', intervalInSec: 3})}
+            >
+                Create
+            </Button>
         </div>
     );
 }
 
 const useStyles = makeStyles({
-    root: {},
+    ellipsis: {
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        display: '-webkit-box',
+        WebkitLineClamp: '2',
+        WebkitBoxOrient: 'vertical',
+    },
+    createButton: {
+        margin: '1rem',
+    },
 });

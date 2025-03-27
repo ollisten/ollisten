@@ -5,17 +5,25 @@ import {
     TranscriptionModelOptionSelectedEvent,
     TranscriptionModelOptionsUpdatedEvent
 } from "./system/transcription.ts";
-import {SubscriptionManager} from "./system/subscriptionManager.ts";
+import {Events} from "./system/events.ts";
+import {makeStyles} from "@mui/styles";
+
+const useStyles = makeStyles({
+    root: {
+        margin: '1rem',
+    },
+});
 
 export default function TranscriptionModelSelect() {
 
+    const classes = useStyles();
     const [options, setOptions] = useState<Option[]>(() => Transcription.get()
         .getTranscriptionModelOptions()
         .map(mapModelToOption));
     const [modelName, setModelName] = useState<string | null>(() => Transcription.get().getTranscriptionModelName());
 
     useEffect(() => {
-        return SubscriptionManager.get().subscribe([
+        return Events.get().subscribe([
             'transcription-model-options-updated',
             'transcription-model-option-selected',
         ], (
@@ -37,6 +45,7 @@ export default function TranscriptionModelSelect() {
 
     return (
         <Select
+            className={classes.root}
             label='Transcription Model'
             value={modelName}
             options={options}

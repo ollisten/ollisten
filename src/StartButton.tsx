@@ -1,4 +1,4 @@
-import {useEffect} from "react";
+import {useEffect, useState} from "react";
 import {useForceRender} from "./util/useForceRender.ts";
 import {
     DeviceInputOptionSelectedEvent,
@@ -11,19 +11,23 @@ import {
 import {Button} from "@mui/material";
 import {AgentManager} from "./system/agentManager.ts";
 import {Llm, LlmModelOptionSelectedEvent} from "./system/llm.ts";
-import {SubscriptionManager} from "./system/subscriptionManager.ts";
+import {Events} from "./system/events.ts";
 
 enum ButtonState {
     Start,
     Stop,
 }
 
-function StartButton() {
+function StartButton(props: {
+    startTranscription?: boolean;
+    startAgents?: boolean;
+    label?: string;
+}) {
 
     const forceRender = useForceRender();
 
     useEffect(() => {
-        return SubscriptionManager.get().subscribe([
+        return Events.get().subscribe([
             'device-output-updated', 'llm-model-option-selected', 'status-change', 'device-input-option-selected', 'transcription-model-option-selected',
         ], (event: StatusChangeEvent | DeviceInputOptionSelectedEvent | TranscriptionModelOptionSelectedEvent | DeviceOutputUpdatedEvent | LlmModelOptionSelectedEvent) => {
             switch (event.type) {
@@ -65,16 +69,24 @@ function StartButton() {
                 e.preventDefault();
                 switch (buttonState) {
                     case ButtonState.Start:
-                        Transcription.get().startTranscription();
-                        AgentManager.get().managerStart();
+                        if (props.startTranscription) {
+                            Transcription.get().startTranscription();
+                        }
+                        if (props.startAgents) {
+                            AgentManager.get().managerStart();
+                        }
                         break;
                     case ButtonState.Stop:
-                        Transcription.get().stopTranscription();
-                        AgentManager.get().managerStop();
+                        if (props.startTranscription) {
+                            Transcription.get().stopTranscription();
+                        }
+                        if (props.startAgents) {
+                            AgentManager.get().managerStop();
+                        }
                         break;
                 }
             }}
-        >{buttonState === ButtonState.Start ? 'Start' : 'Stop'}</Button>
+        >{buttonState === ButtonState.Start ? (props.label || 'Start') : 'Stop'}</Button>
     );
 }
 

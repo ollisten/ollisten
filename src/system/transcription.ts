@@ -1,5 +1,6 @@
 import {invoke} from "@tauri-apps/api/core";
-import {SubscriptionManager} from "./subscriptionManager.ts";
+import {Events} from "./events.ts";
+import {getAppConfig, setAppConfig} from "../util/useAppConfig.ts";
 
 
 export type DeviceOption = {
@@ -139,7 +140,7 @@ export class Transcription {
         }
 
         // Setup event handler
-        const unsubscribeEventHandler = SubscriptionManager.get().subscribe([
+        const unsubscribeEventHandler = Events.get().subscribe([
             'TranscriptionDownloadProgress', 'TranscriptionLoadingProgress', 'TranscriptionStarted', 'TranscriptionError', 'TranscriptionStopped'
         ], (
             event: DownloadProgressEvent | LoadingProgressEvent | TranscriptionStartedEvent | ErrorEvent | StoppedEvent
@@ -171,7 +172,7 @@ export class Transcription {
         });
 
         // Subscribe to events from Rust
-        const channel = SubscriptionManager.get().createChannel();
+        const channel = Events.get().createChannel();
         await invoke('transcription_subscribe', {
             sessionChannel: channel,
             subscriberName: this.subscriberName,
@@ -179,7 +180,8 @@ export class Transcription {
 
         this.unsubscribe = () => {
             unsubscribeEventHandler();
-            channel.onmessage = () => {};
+            channel.onmessage = () => {
+            };
         };
     }
 
@@ -283,7 +285,20 @@ export class Transcription {
             this.transcriptionModelOptions = response;
             this.onEvent({type: 'transcription-model-options-updated', options: response});
             if (this.transcriptionModelName == null || !this.transcriptionModelOptions.includes(this.transcriptionModelName)) {
-                this.selectTranscriptionModelName(response[0]);
+                var chosenNewName: string | undefined = undefined;
+
+                // Chose one from config if available
+                const nameFromConfig = getAppConfig().selectedTranscriptionModelName;
+                if(nameFromConfig && response.findIndex(n => n === nameFromConfig) !== -1) {
+                    chosenNewName = nameFromConfig;
+                }
+
+                // Otherwise choose first on from the options
+                if(!chosenNewName) {
+                    chosenNewName = response[0]
+                }
+
+                this.selectTranscriptionModelName(chosenNewName);
             }
         } catch (e) {
             this.onError(`Failed to get Transcription model options: ${e}`);
@@ -302,6 +317,7 @@ export class Transcription {
         this.transcriptionModelName = newTranscriptionModelName;
         this.restartTranscriptionIfRunning();
         this.onEvent({type: 'transcription-model-option-selected', option: newTranscriptionModelName});
+        setAppConfig(c => c.selectedTranscriptionModelName = newTranscriptionModelName);
     }
 
     /*
@@ -322,7 +338,20 @@ export class Transcription {
             this.deviceInputOptions = response;
             this.onEvent({type: 'device-input-options-updated', options: response});
             if (this.deviceInputId == null || this.deviceInputOptions.findIndex(o => o.id === this.deviceInputId) === -1) {
-                this.selectInputDeviceId(response[0].id);
+                var chosenNewId: number | undefined = undefined;
+
+                // Chose one from config if available
+                const deviceNameFromConfig = getAppConfig().selectedInputDeviceName;
+                if(deviceNameFromConfig) {
+                    chosenNewId = response.find(o => o.name === deviceNameFromConfig)?.id;
+                }
+
+                // Otherwise choose first on from the options
+                if(!chosenNewId) {
+                    chosenNewId = response[0].id
+                }
+
+                this.selectInputDeviceId(chosenNewId);
             }
         } catch (e) {
             this.onError(`Failed to get microphone/input devices: ${e}`);
@@ -341,6 +370,9 @@ export class Transcription {
         this.deviceInputId = newId;
         this.restartTranscriptionIfRunning();
         this.onEvent({type: 'device-input-option-selected', option: newId});
+
+        const deviceName = this.getInputDeviceOptions().find(o => o.id === newId)?.name;
+        setAppConfig(c => c.selectedInputDeviceName = deviceName);
     }
 
     /*
@@ -349,9 +381,9 @@ export class Transcription {
 
     private deviceOutput: DeviceOption | null = null;
 
-    private async fetchOutputDevice() {
+    public async fetchOutputDevice() {
         try {
-            const response = await invoke<DeviceOption>("get_hidden_device");
+            const response = await invoke<DeviceOption | null>("get_hidden_device");
             console.log('Recv get_hidden_device', response);
             this.selectOutputDevice(response);
             this.onEvent({type: 'device-output-updated', option: response});
@@ -370,11 +402,11 @@ export class Transcription {
     }
 
     onEvent(event: StatusChangeEvent | TranscriptionModelOptionSelectedEvent | TranscriptionModelOptionsUpdatedEvent | DeviceInputOptionSelectedEvent | DeviceOutputUpdatedEvent | DeviceInputOptionsUpdatedEvent) {
-        SubscriptionManager.get().sendInternal(event);
+        Events.get().sendInternal(event);
     }
 
     onError(message: string) {
-        SubscriptionManager.get().sendInternal<ErrorEvent>({
+        Events.get().sendInternal<ErrorEvent>({
             type: 'TranscriptionError',
             message: message,
         });

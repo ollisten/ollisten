@@ -1,17 +1,14 @@
-use crate::audio::devices::DeviceOption;
 use crate::transcription::cpal_macos_hack::create_cpal_mic;
 use crate::transcription::event::TranscriptionEvent;
 use crate::transcription::model::TranscriptionModel;
-// Using tokio's RwLock instead of std
 use crate::transcription::voice_audio_detector_ext_v2::VoiceActivityRechunkerStreamV2;
 use kalosm::sound::*;
 use log::{error, info};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::ipc::Channel;
-use tauri::{Manager, Runtime, State};
+use tauri::State;
 use tokio::sync::{Mutex, RwLock};
 use tokio::task::AbortHandle;
 
@@ -146,6 +143,11 @@ pub async fn start_transcription(
 
             // Process the transcription stream
             while let Some(chunk) = text_stream.next().await {
+                // Skip empty chunks
+                if chunk.text().is_empty() {
+                    continue;
+                }
+
                 // Emit the transcribed text with device identifier
                 if let Err(e) = send_event(
                     &listeners_clone,

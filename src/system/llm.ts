@@ -1,12 +1,19 @@
 import {invoke} from "@tauri-apps/api/core";
-import {SubscriptionManager} from "./subscriptionManager.ts";
+import {Events} from "./events.ts";
+import {AppConfigChangedEvent, getAppConfig, setAppConfig} from "../util/useAppConfig.ts";
 
 export type LlmModel = {
     name: string;
-    size: number;
+    description: string;
 }
 
-export type LlmModeloptionsUpdatedEvent = {
+export type OllamaStatus = 'Running' | 'Stopped' | 'Missing';
+export type OllamaLlmModels = {
+    models: LlmModel[];
+    status: OllamaStatus;
+}
+
+export type LlmModelOptionsUpdatedEvent = {
     type: 'llm-model-options-updated';
     options: LlmModel[];
 }
@@ -18,6 +25,16 @@ export type LlmModelOptionsErrorEvent = {
     type: 'llm-model-options-error';
     msg: string;
 };
+
+export type OllamaIsStoppedEvent = {
+    type: 'ollama-is-stopped';
+}
+export type OllamaNotInstalledEvent = {
+    type: 'ollama-not-installed';
+}
+export type OllamaNoModels = {
+    type: 'ollama-no-models';
+}
 
 export class Llm {
 
@@ -33,21 +50,22 @@ export class Llm {
     }
 
     private constructor() {
-        this.listenForLlmModelChanges();
-        this.fetchLlmModelOptions();
+        this.setup();
+    }
 
-        let llmModelName = new URLSearchParams(window.location.search)
-            .get('llmModelName');
-        if (llmModelName) {
-            this.llmModelName = decodeURIComponent(llmModelName);
+    private async setup() {
+        await this.listenForEvents();
+        await this.fetchLlmModelOptions();
+
+        const modelNameFromConfig = getAppConfig().selectedLlmModelName;
+        if (modelNameFromConfig) {
+            this.llmModelName = modelNameFromConfig;
+            await this.onEventLlmModel({type: 'llm-model-option-selected', modelName: modelNameFromConfig});
         }
     }
 
     public talk(text: string): Promise<string> {
-        return invoke<string>("llm_talk", {
-            llmModel: this.llmModelName,
-            text,
-        });
+        return invoke<string>("llm_talk", {text});
     }
 
     public canStart(): boolean {
@@ -58,12 +76,22 @@ export class Llm {
      * LLM Model options
      */
 
-    private async listenForLlmModelChanges() {
-        SubscriptionManager.get().subscribe('llm-model-option-selected', (event: LlmModelOptionSelectedEvent) => {
+    private async listenForEvents() {
+        Events.get().subscribe([
+            'app-config-changed', 'llm-model-option-selected'
+        ], (event: AppConfigChangedEvent | LlmModelOptionSelectedEvent) => {
             switch (event.type) {
-                case "llm-model-option-selected":
-                    this.llmModelName = event.modelName;
-                    this.onEventLlmModel({type: 'llm-model-option-selected', modelName: event.modelName});
+                case 'app-config-changed':
+                    const llmModelNameFromConfig = getAppConfig().selectedLlmModelName || null;
+                    if (!!llmModelNameFromConfig && llmModelNameFromConfig !== this.llmModelName) {
+                        this.llmModelName = llmModelNameFromConfig;
+                        this.onEventLlmModel({type: 'llm-model-option-selected', modelName: this.llmModelName});
+                    }
+                    break;
+                case 'llm-model-option-selected':
+                    invoke<string>("setup_ollama", {
+                        llmModel: event.modelName
+                    }).catch(console.error);
                     break;
                 default:
                     console.error(`Unexpected event: ${event}`);
@@ -72,18 +100,31 @@ export class Llm {
         });
     }
 
-    private async fetchLlmModelOptions() {
+    public async fetchLlmModelOptions() {
         try {
-            const response = await invoke<LlmModel[]>("get_llm_model_options");
-            console.log('Recv get_llm_model_options', response);
-            if (response.length === 0) {
-                this.onError('No LLM models available');
+            const response = await invoke<OllamaLlmModels>("start_and_get_llm_model_options_ollama");
+            console.log('Recv start_and_get_llm_model_options_ollama', response);
+            switch (response.status) {
+                case 'Running':
+                    break; // Continue
+                case 'Stopped':
+                    this.onEventLlmModel({type: 'ollama-is-stopped'});
+                    return;
+                case 'Missing':
+                    this.onEventLlmModel({type: 'ollama-not-installed'});
+                    return;
+                default:
+                    this.onError('Unexpected Ollama state: ' + response.status);
+                    return;
+            }
+            if (response.models.length === 0) {
+                this.onEventLlmModel({type: 'ollama-no-models'});
                 return;
             }
-            this.llmModelOptions = response;
-            this.onEventLlmModel({type: 'llm-model-options-updated', options: response});
-            if (this.llmModelName == null || response.findIndex(o => o.name === this.llmModelName) === -1) {
-                await this.selectLlmModelName(response[0].name);
+            this.llmModelOptions = response.models;
+            this.onEventLlmModel({type: 'llm-model-options-updated', options: response.models});
+            if (this.llmModelName == null || response.models.findIndex(o => o.name === this.llmModelName) === -1) {
+                await this.selectLlmModelName(response.models[0].name);
             }
         } catch (e) {
             this.onError(`Failed to get LLM model options: ${e}`);
@@ -99,17 +140,25 @@ export class Llm {
     }
 
     public async selectLlmModelName(newLlmModelName: string) {
-        SubscriptionManager.get().sendExternal<LlmModelOptionSelectedEvent>({
+        await setAppConfig(c => c.selectedLlmModelName = newLlmModelName);
+        await Events.get().sendExternal<LlmModelOptionSelectedEvent>({
             type: 'llm-model-option-selected',
             modelName: newLlmModelName,
         });
     }
 
-    private onError(message: string) {
-        this.onEventLlmModel({type: 'llm-model-options-error', msg: message});
+    private async onError(message: string) {
+        await this.onEventLlmModel({type: 'llm-model-options-error', msg: message});
     }
 
-    private onEventLlmModel(event: LlmModeloptionsUpdatedEvent | LlmModelOptionSelectedEvent | LlmModelOptionsErrorEvent) {
-        SubscriptionManager.get().sendExternal<typeof event>(event);
+    private async onEventLlmModel(event:
+                                      LlmModelOptionsUpdatedEvent
+                                      | LlmModelOptionSelectedEvent
+                                      | LlmModelOptionsErrorEvent
+                                      | OllamaIsStoppedEvent
+                                      | OllamaNotInstalledEvent
+                                      | OllamaNoModels
+    ) {
+        await Events.get().sendExternal<typeof event>(event);
     }
 }

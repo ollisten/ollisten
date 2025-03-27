@@ -2,7 +2,7 @@ import {Tab, Tabs} from "@mui/material";
 import {makeStyles} from "@mui/styles";
 import {ReactNode} from "react";
 
-export const pages = [
+const pages = [
     {value: 'quick-launch', name: 'Launcher'},
     {value: 'agents', name: 'Agents'},
     {value: 'transcription', name: 'Transcription'},
@@ -17,11 +17,10 @@ export default function Menu(props: {
         <Tabs
             value={props.activePage}
             onChange={(_, newValue) => props.onPageChange(newValue)}
-            variant='scrollable'
-            scrollButtons='auto'
+            variant='fullWidth'
         >
             {pages.map(page => (
-                <Tab label={page.name} value={page.value}/>
+                <Tab key={page.value} label={page.name} value={page.value}/>
             ))}
         </Tabs>
     );
@@ -50,6 +49,6 @@ const useStylesTabPanels = makeStyles({
     root: {
         display: 'flex',
         flexDirection: 'column',
-        // width: '100%',
+        marginTop: '1rem',
     },
 });

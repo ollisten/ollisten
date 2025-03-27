@@ -7,9 +7,9 @@ import {
     StatusChangeEvent,
     Transcription
 } from "./system/transcription.ts";
-import {Alert, AlertColor, Collapse} from "@mui/material";
+import {Alert, Chip, Collapse} from "@mui/material";
 import {makeStyles} from "@mui/styles";
-import {SubscriptionManager} from "./system/subscriptionManager.ts";
+import {Events} from "./system/events.ts";
 import {formatBytesToString} from "./util/unitConversion.ts";
 
 const useStyles = makeStyles({
@@ -18,6 +18,7 @@ const useStyles = makeStyles({
         display: 'flex',
         flexDirection: 'column',
         gap: '0.5rem',
+        alignItems: 'left',
     },
 });
 
@@ -29,7 +30,7 @@ export default function StatusView() {
     const [messageAlertShow, setMessageAlertShow] = useState<boolean>(false);
 
     useEffect(() => {
-        return SubscriptionManager.get().subscribe([
+        return Events.get().subscribe([
             'status-change',
             'TranscriptionDownloadProgress',
             'TranscriptionLoadingProgress',
@@ -72,10 +73,10 @@ export default function StatusView() {
 
     return (
         <div className={classes.root}>
-            <Alert severity={statusAlertContent.severity} variant='standard'>{statusAlertContent.message}</Alert>
-            <Collapse in={!!messageAlertShow}>
+            <Chip color={statusAlertContent.severity} variant='outlined' label={statusAlertContent.message}/>
+            <Collapse in={messageAlertShow}>
                 <Alert severity={messageAlertContent?.severity || 'error'}
-                       variant='filled'>{messageAlertContent?.message}</Alert>
+                       variant='outlined'>{messageAlertContent?.message}</Alert>
             </Collapse>
         </div>
     );
@@ -83,37 +84,36 @@ export default function StatusView() {
 
 type AlertContent = {
     message: string,
-    severity: AlertColor,
+    severity: 'success' | 'info' | 'warning' | 'error',
 }
 
 const mapStatusToDisplay = (status: Status): AlertContent => {
-    let display = 'Unknown';
-    let severity: AlertColor = 'info';
+    let alertContent: AlertContent = {
+        message: 'Unknown',
+        severity: 'info',
+    }
     switch (status) {
         case Status.Starting:
-            display = 'Starting...';
+            alertContent.message = 'Starting...';
             break;
         case Status.ModelDownloading:
-            display = 'Downloading model...';
+            alertContent.message = 'Downloading model...';
             break;
         case Status.ModelLoading:
-            display = 'Loading model...';
+            alertContent.message = 'Loading model...';
             break;
         case Status.TranscriptionStarted:
-            display = 'Running';
-            severity = 'success';
+            alertContent.message = 'Running';
+            alertContent.severity = 'success';
             break;
         case Status.Stopping:
-            display = 'Stopping...';
-            severity = 'error';
+            alertContent.message = 'Stopping...';
+            alertContent.severity = 'error';
             break;
         case Status.Stopped:
-            display = 'Stopped';
-            severity = 'error';
+            alertContent.message = 'Stopped';
+            alertContent.severity = 'error';
             break;
     }
-    return {
-        message: display,
-        severity: severity,
-    }
+    return alertContent;
 }

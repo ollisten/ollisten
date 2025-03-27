@@ -16,7 +16,6 @@ pub fn get_models() -> Result<Vec<String>, String> {
     // Get just the extension without the dot
     let extension = MODEL_EXTENSION.trim_start_matches('.');
 
-    // Safely handle read_dir failure by returning an empty vector
     let dir =
         fs::read_dir(MODEL_PATH).map_err(|e| format!("Failed to read model directory: {}", e))?;
 

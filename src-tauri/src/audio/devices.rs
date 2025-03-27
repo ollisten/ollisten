@@ -13,7 +13,7 @@ pub async fn get_listen_device_options() -> Result<Vec<DeviceOption>, String> {
 }
 
 #[tauri::command]
-pub async fn get_hidden_device() -> Result<DeviceOption, String> {
+pub async fn get_hidden_device() -> Result<Option<DeviceOption>, String> {
     info!("Command: fetch_hidden_output_device");
     fetch_hidden_output_device()
 }
@@ -30,7 +30,7 @@ pub fn list_available_audio_input_devices(devices: &mut Vec<DeviceOption>) -> Re
 }
 
 #[cfg(not(target_os = "macos"))]
-fn fetch_hidden_output_device() -> Result<DeviceOption, String> {
+fn fetch_hidden_output_device() -> Result<Option<DeviceOption>, String> {
     Err("Platform not supported")
 }
 
@@ -41,7 +41,7 @@ fn list_available_audio_input_devices(devices: &mut Vec<DeviceOption>) -> Result
 }
 
 #[cfg(target_os = "macos")]
-fn fetch_hidden_output_device() -> Result<DeviceOption, String> {
+fn fetch_hidden_output_device() -> Result<Option<DeviceOption>, String> {
     use super::macos_core_audio::fetch_hidden_output_device_macos;
     fetch_hidden_output_device_macos()
 }

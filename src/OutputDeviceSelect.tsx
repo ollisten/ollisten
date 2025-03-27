@@ -1,16 +1,23 @@
 import {useCallback, useEffect, useState} from "react";
 import Select, {Option} from "./Select.tsx";
 import {DeviceOption, DeviceOutputUpdatedEvent, Transcription} from "./system/transcription.ts";
-import {SubscriptionManager} from "./system/subscriptionManager.ts";
+import {Events} from "./system/events.ts";
+import {makeStyles} from "@mui/styles";
+
+const useStyles = makeStyles({
+    root: {
+        margin: '1rem',
+    },
+});
 
 export default function OutputDeviceSelect() {
 
-
+    const classes = useStyles();
     const [option, setOption] = useState<Option | null>(() => mapDeviceToOption(Transcription.get()
         .getOutputDevice()));
 
     useEffect(() => {
-        return SubscriptionManager.get().subscribe('device-output-updated', (
+        return Events.get().subscribe('device-output-updated', (
             event: DeviceOutputUpdatedEvent
         ) => {
             switch (event.type) {
@@ -26,6 +33,7 @@ export default function OutputDeviceSelect() {
 
     return (
         <Select
+            className={classes.root}
             label='Output device'
             value={option?.value ?? null}
             options={option === null ? [] : [option]}

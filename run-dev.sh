@@ -1,2 +1,2 @@
 #!/bin/bash
-RUST_BACKTRACE=1 pnpm tauri dev
+MACOSX_DEPLOYMENT_TARGET=10.15 RUST_BACKTRACE=1 pnpm tauri dev

@@ -26,25 +26,28 @@ lazy_static! {
 const LOCAL_ECHO_INTERNAL_UID: &str = "LocalEcho_INTERNAL";
 const LOCAL_ECHO_INTERNAL_DISPLAY_NAME: &str = "LocalEcho";
 
-pub fn fetch_hidden_output_device_macos() -> Result<DeviceOption, String> {
+pub fn fetch_hidden_output_device_macos() -> Result<Option<DeviceOption>, String> {
     // Acquire lock before audio operations
     let _guard = AudioDeviceMutex.lock().map_err(|e| e.to_string())?;
 
-    let device_id = get_device_by_uid(LOCAL_ECHO_INTERNAL_UID)
-        .map_err(|e| {
-            format!(
+    // Return if None, otherwise keep getting the device name later
+    let device_id = match get_device_by_uid(LOCAL_ECHO_INTERNAL_UID) {
+        Ok(Some(id)) => id,
+        Ok(None) => return Ok(None),
+        Err(e) => {
+            return Err(format!(
                 "Failed to fetch {} output device: {}",
                 LOCAL_ECHO_INTERNAL_UID, e
-            )
-        })?
-        .ok_or_else(|| format!("Hidden output device {LOCAL_ECHO_INTERNAL_UID} not found"))?;
+            ))
+        }
+    };
 
     let name = get_device_name(device_id).unwrap_or_else(|_| "Unknown Device".to_string());
     info!("Internal device {LOCAL_ECHO_INTERNAL_UID} found with id {device_id} name {name}");
-    Ok(DeviceOption {
+    Ok(Some(DeviceOption {
         id: device_id as i32,
         name: LOCAL_ECHO_INTERNAL_DISPLAY_NAME.to_string(),
-    })
+    }))
 }
 
 pub fn list_available_audio_input_devices_macos(

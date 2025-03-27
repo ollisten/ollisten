@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "opener:allow-open-url",
     "core:window:allow-start-dragging",
     "core:window:allow-create",
     "core:window:allow-set-size",
