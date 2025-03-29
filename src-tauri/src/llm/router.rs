@@ -13,17 +13,26 @@ pub struct LlmRouterState {
 
 #[tauri::command]
 pub async fn llm_talk(state: State<'_, LlmRouterState>, text: &str) -> Result<String, String> {
-    info!("LLM request: {}", text);
+    info!(
+        "LLM request: {}",
+        &text.chars().take(100).collect::<String>()
+    );
 
     if let Some(ollama) = state.ollama.read().await.as_ref() {
         let response = llm_talk_ollama(ollama, text).await?;
-        info!("LLM ollama response: {}", response);
+        info!(
+            "LLM ollama response: {}",
+            &response.chars().take(100).collect::<String>()
+        );
         return Ok(response);
     }
 
     if let Some(open_ai) = state.open_ai.read().await.as_ref() {
         let response = llm_talk_open_ai(open_ai, text).await?;
-        info!("LLM openai response: {}", response);
+        info!(
+            "LLM openai response: {}",
+            &response.chars().take(100).collect::<String>()
+        );
         return Ok(response);
     }
 

@@ -5,7 +5,7 @@ export type DebouncedFunction<T extends any[], R> = {
 
 export default function debounce<T extends any[], R>(
     func: (...args: T) => Promise<R>,
-    wait: number,
+    waitInMs: number,
     immediate: boolean = false
 ): DebouncedFunction<T, R> {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -63,7 +63,7 @@ export default function debounce<T extends any[], R>(
                 }
             };
 
-            timeout = setTimeout(later, wait);
+            timeout = setTimeout(later, waitInMs);
 
             if (shouldExecuteNow) {
                 execute(args)

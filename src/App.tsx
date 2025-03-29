@@ -12,6 +12,7 @@ import AgentList from "./AgentList.tsx";
 import {InstallDriverNotice} from "./InstallDriverNotice.tsx";
 import {useAppConfig} from "./util/useAppConfig.ts";
 import {InstallStartOllamaNotice} from "./InstallStartOllamaNotice.tsx";
+import ModeList from "./ModeList.tsx";
 
 export default function App() {
     const classes = useStyles();
@@ -33,7 +34,8 @@ export default function App() {
                 <TabPanel tabPage='quick-launch' activePage={activePage}>
                     <InstallStartOllamaNotice/>
                     <InstallDriverNotice/>
-                    <StartButton startTranscription startAgents/>
+                    <ModeList />
+                    <StartButton startTranscription startAgents label='Start all'/>
                 </TabPanel>
                 <TabPanel tabPage='agents' activePage={activePage}>
                     <AgentList/>

@@ -1,47 +1,14 @@
 import {makeStyles} from "@mui/styles";
-import {useCallback, useEffect, useRef} from "react";
-import {Events} from "./system/events.ts";
-import {Agent, AgentConfig, AgentManager, FileChangeEvent} from "./system/agentManager.ts";
-import {useForceRender} from "./util/useForceRender.ts";
+import {useCallback} from "react";
+import {Agent, AgentConfig} from "./system/agentManager.ts";
 import {Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
 import {WebviewWindow} from "@tauri-apps/api/webviewWindow";
 import {getCurrentWindow} from "@tauri-apps/api/window";
+import useAgents from "./useAgents.ts";
 
 export default function AgentList() {
     const classes = useStyles();
-
-    const forceRender = useForceRender();
-    const agentsRef = useRef<{ [name: string]: Agent }>({});
-
-    useEffect(() => {
-        AgentManager.get().getAllAgentConfigs().then((agentConfigs: AgentConfig[]) => {
-            agentConfigs.forEach(agentConfig => {
-                agentsRef.current[agentConfig.name] = agentConfig.agent;
-            })
-            forceRender();
-        });
-
-        return Events.get().subscribe([
-            'file-agent-created', 'file-agent-deleted', 'file-agent-modified'
-        ], (
-            event: FileChangeEvent
-        ) => {
-            switch (event.type) {
-                case 'file-agent-created':
-                case 'file-agent-modified':
-                    agentsRef.current[event.name] = event.agent;
-                    forceRender();
-                    break;
-                case 'file-agent-deleted':
-                    delete agentsRef.current[event.name];
-                    forceRender();
-                    break;
-                default:
-                    console.error(`Unexpected event: ${event}`);
-                    break;
-            }
-        });
-    }, []);
+    const agents = useAgents();
 
     const openAgentEdit = useCallback((name: string, agent: Agent) => {
         const windowLabel = `agentEdit-${Math.random().toString(36).substring(7)}`;
@@ -50,8 +17,8 @@ export default function AgentList() {
             url: `agent-edit.html?agentConfig=${encodeURIComponent(JSON.stringify(agentConfig))}`,
             title: 'Agent',
             center: true,
-            width: 500,
-            height: 700,
+            width: 1024,
+            height: 768,
             resizable: true,
             parent: getCurrentWindow(),
             visible: true,
@@ -70,35 +37,35 @@ export default function AgentList() {
 
     return (
         <div>
-            {!!Object.keys(agentsRef.current).length && (
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Prompt</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {Object.entries(agentsRef.current).map(([name, agent]) => (
-                            <TableRow key={name}>
-                                <TableCell component="th" scope="row">
-                                    {name}
-                                </TableCell>
-                                <TableCell component="th" scope="row">
+            {!!Object.keys(agents).length && (
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Prompt</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {Object.entries(agents).map(([name, agent]) => (
+                                <TableRow key={name}>
+                                    <TableCell component="th" scope="row">
+                                        {name}
+                                    </TableCell>
+                                    <TableCell component="th" scope="row">
                                     <span className={classes.ellipsis}>
                                         {agent.prompt}
                                     </span>
-                                </TableCell>
-                                <TableCell component="th" scope="row">
-                                    <Button onClick={() => openAgentEdit(name, agent)}>Edit</Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                                    </TableCell>
+                                    <TableCell component="th" scope="row">
+                                        <Button onClick={() => openAgentEdit(name, agent)}>Edit</Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             )}
             <Button
                 className={classes.createButton}

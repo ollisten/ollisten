@@ -55,7 +55,7 @@ function StartButton(props: {
             break;
     }
     if (buttonState === ButtonState.Start && (
-        !Transcription.get().canStart()
+        !Transcription.get().canStart().valid
         || !Llm.get().canStart()
     )) {
         disabled = true;

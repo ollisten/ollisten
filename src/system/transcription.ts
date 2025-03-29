@@ -8,6 +8,11 @@ export type DeviceOption = {
     id: number;
 }
 
+export enum DeviceSource {
+    Host,
+    Guest,
+}
+
 export enum Status {
     Starting,
     ModelDownloading,
@@ -211,7 +216,8 @@ export class Transcription {
 
     public canStart(): {
         valid: true,
-        deviceIds: number[],
+        deviceIdHost: number | null,
+        deviceIdGuest: number | null,
     } | {
         valid: false,
         error: string,
@@ -222,14 +228,8 @@ export class Transcription {
                 error: 'No transcription model selected',
             };
         }
-        const deviceIds = [];
-        if (this.deviceInputId !== null) {
-            deviceIds.push(this.deviceInputId);
-        }
-        if (this.deviceOutput !== null) {
-            deviceIds.push(this.deviceOutput.id);
-        }
-        if (!deviceIds.length) {
+        if (this.deviceInputId === null
+            && this.deviceOutput === null) {
             return {
                 valid: false,
                 error: 'No devices to listen to',
@@ -237,7 +237,8 @@ export class Transcription {
         }
         return {
             valid: true,
-            deviceIds,
+            deviceIdGuest: this.deviceOutput?.id || null,
+            deviceIdHost: this.deviceInputId,
         }
     }
 
@@ -251,7 +252,10 @@ export class Transcription {
         try {
             await invoke('start_transcription', {
                 modelType: this.transcriptionModelName,
-                deviceIds: startData.deviceIds,
+                deviceIds: [
+                    ...(startData.deviceIdHost ? [startData.deviceIdHost] : []),
+                    ...(startData.deviceIdGuest ? [startData.deviceIdGuest] : []),
+                ],
             });
         } catch (e) {
             this.onError(`Failed to start transcription: ${e}`);
@@ -265,6 +269,13 @@ export class Transcription {
         } catch (err) {
             this.onError(`Failed to stop transcription: ${err}`);
         }
+    }
+
+    public deviceIdToSource(deviceId: number): DeviceSource {
+        if(this.deviceOutput?.id === deviceId) {
+            return DeviceSource.Guest;
+        }
+            return DeviceSource.Host;
     }
 
     /*
@@ -289,12 +300,12 @@ export class Transcription {
 
                 // Chose one from config if available
                 const nameFromConfig = getAppConfig().selectedTranscriptionModelName;
-                if(nameFromConfig && response.findIndex(n => n === nameFromConfig) !== -1) {
+                if (nameFromConfig && response.findIndex(n => n === nameFromConfig) !== -1) {
                     chosenNewName = nameFromConfig;
                 }
 
                 // Otherwise choose first on from the options
-                if(!chosenNewName) {
+                if (!chosenNewName) {
                     chosenNewName = response[0]
                 }
 
@@ -342,12 +353,12 @@ export class Transcription {
 
                 // Chose one from config if available
                 const deviceNameFromConfig = getAppConfig().selectedInputDeviceName;
-                if(deviceNameFromConfig) {
+                if (deviceNameFromConfig) {
                     chosenNewId = response.find(o => o.name === deviceNameFromConfig)?.id;
                 }
 
                 // Otherwise choose first on from the options
-                if(!chosenNewId) {
+                if (!chosenNewId) {
                     chosenNewId = response[0].id
                 }
 
