@@ -1,25 +1,23 @@
-import {Box, Chip, FormControl, InputLabel, MenuItem, Select as MuiSelect} from "@mui/material";
+import {Box, Chip, FormControl, MenuItem, Select as MuiSelect} from "@mui/material";
 
 export default function AgentSelect(props: {
-    label: string;
     options: string[];
     values: string[];
-    setModeAgents: (label: string, agents: string[]) => void;
+    onSetAgents: (agents: string[]) => void;
 }) {
     return (
-        <FormControl>
-            <InputLabel>Agents</InputLabel>
+        <FormControl fullWidth>
             <MuiSelect<string[]>
                 multiple
                 fullWidth
-                label={props.label}
+                sx={{minWidth: 120}}
                 value={props.values}
                 onChange={e => {
                     const value = e.target.value;
                     const values = typeof value === 'string'
                         ? value.split(',').filter(v => !!v)
                         : value;
-                    props.setModeAgents(props.label, values);
+                    props.onSetAgents(values);
                 }}
                 renderValue={(selected) => (
                     <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5}}>

@@ -1,11 +1,9 @@
 import {makeStyles} from "@mui/styles";
-import TranscriptionView from "./TranscriptionView.tsx";
-import StatusView from "./StatusView.tsx";
+import AppBar from "./AppBar.tsx";
 import InputDeviceSelect from "./InputDeviceSelect.tsx";
 import OutputDeviceSelect from "./OutputDeviceSelect.tsx";
 import TranscriptionModelSelect from "./TranscriptionModelSelect.tsx";
 import LlmModelSelect from "./LlmModelSelect.tsx";
-import StartButton from "./StartButton.tsx";
 import Menu, {TabPanel, TabPanels} from "./Menu.tsx";
 import {useState} from "react";
 import AgentList from "./AgentList.tsx";
@@ -13,12 +11,18 @@ import {InstallDriverNotice} from "./InstallDriverNotice.tsx";
 import {useAppConfig} from "./util/useAppConfig.ts";
 import {InstallStartOllamaNotice} from "./InstallStartOllamaNotice.tsx";
 import ModeList from "./ModeList.tsx";
+import {Collapse} from "@mui/material";
+import Launcher from "./Launcher.tsx";
+import useWindowSize from "./util/useWindowSize.tsx";
 
 export default function App() {
     const classes = useStyles();
 
-    const [activePage, setActivePage] = useState('quick-launch');
     const {loading} = useAppConfig();
+    const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [activePage, setActivePage] = useState<string>('quick-launch');
+
+    const setWindowSize = useWindowSize();
 
     if (loading) {
         return null;
@@ -28,14 +32,27 @@ export default function App() {
         <main
             className={classes.root}
         >
-            <StatusView/>
-            <Menu activePage={activePage} onPageChange={setActivePage}/>
+            <AppBar popoverDirection={isEditing ? 'right' : 'down'} onSettingsClick={() => {
+                if (isEditing) {
+                    setWindowSize({width: 224, height: 335});
+                    setActivePage('quick-launch');
+                    setIsEditing(false);
+                } else {
+                    setWindowSize({width: 800, height: 600});
+                    setIsEditing(true);
+                }
+            }}/>
+            <Collapse in={isEditing}>
+                <Menu activePage={activePage} onPageChange={setActivePage}/>
+            </Collapse>
             <TabPanels>
                 <TabPanel tabPage='quick-launch' activePage={activePage}>
                     <InstallStartOllamaNotice/>
                     <InstallDriverNotice/>
-                    <ModeList />
-                    <StartButton startTranscription startAgents label='Start all'/>
+                    <Launcher/>
+                </TabPanel>
+                <TabPanel tabPage='modes' activePage={activePage}>
+                    <ModeList/>
                 </TabPanel>
                 <TabPanel tabPage='agents' activePage={activePage}>
                     <AgentList/>
@@ -45,7 +62,6 @@ export default function App() {
                     <InputDeviceSelect/>
                     <OutputDeviceSelect/>
                     <TranscriptionModelSelect/>
-                    <TranscriptionView/>
                 </TabPanel>
                 <TabPanel tabPage='llm-model' activePage={activePage}>
                     <InstallStartOllamaNotice/>

@@ -9,69 +9,74 @@ export default function debounce<T extends any[], R>(
     immediate: boolean = false
 ): DebouncedFunction<T, R> {
     let timeout: ReturnType<typeof setTimeout> | null = null;
-    let isRunning = false;
-    let pendingArgs: T | null = null;
-    let pendingResolve: ((value: R) => void) | null = null;
-    let pendingReject: ((reason?: any) => void) | null = null;
+    let isPromiseRunning = false;
+    let latestCall: {
+        args: T;
+        resolve: (value: R) => void;
+        reject: (reason?: any) => void;
+    } | null = null;
 
-    const execute = async (args: T): Promise<R> => {
-        isRunning = true;
+    const executeFunc = async (args: T): Promise<R> => {
+        isPromiseRunning = true;
         try {
-            const result = await func(...args);
-            pendingResolve?.(result);
-            return result;
-        } catch (error) {
-            pendingReject?.(error);
-            throw error;
+            return await func(...args);
         } finally {
-            isRunning = false;
-            if (pendingArgs) {
-                const nextArgs = pendingArgs;
-                const nextResolve = pendingResolve;
-                const nextReject = pendingReject;
-                pendingArgs = null;
-                pendingResolve = null;
-                pendingReject = null;
-                // Properly chain promises with typed resolution
-                execute(nextArgs).then(nextResolve!).catch(nextReject!);
+            isPromiseRunning = false;
+
+            // If a new call came in while this one was running,
+            // schedule it to run after the debounce period
+            if (latestCall) {
+                const { args: nextArgs, resolve: nextResolve, reject: nextReject } = latestCall;
+                latestCall = null;
+
+                timeout = setTimeout(() => {
+                    timeout = null;
+                    executeFunc(nextArgs)
+                        .then(nextResolve)
+                        .catch(nextReject);
+                }, waitInMs);
             }
         }
     };
 
     const debounced: DebouncedFunction<T, R> = function (...args: T): Promise<R> {
         return new Promise((resolve, reject) => {
-            if (isRunning) {
-                pendingArgs = args;
-                pendingResolve = resolve;
-                pendingReject = reject;
+            // If a promise is currently running, store this call
+            if (isPromiseRunning) {
+                // Replace any previous latest call
+                latestCall = { args, resolve, reject };
                 return;
             }
 
-            const shouldExecuteNow = immediate && !timeout;
+            // Determine if this call should execute immediately
+            const shouldExecuteImmediately = immediate && !timeout;
 
+            // Clear any existing timeout
             if (timeout) {
                 clearTimeout(timeout);
+                timeout = null;
             }
 
-            const later = async () => {
-                timeout = null;
-                try {
-                    const result = await execute(args);
-                    resolve(result);
-                } catch (error) {
-                    reject(error);
-                }
-            };
-
-            timeout = setTimeout(later, waitInMs);
-
-            if (shouldExecuteNow) {
-                execute(args)
+            if (shouldExecuteImmediately) {
+                // Execute immediately
+                executeFunc(args)
                     .then(resolve)
                     .catch(reject);
             } else {
-                pendingResolve = resolve;
-                pendingReject = reject;
+                // Store this call and set a timeout
+                latestCall = { args, resolve, reject };
+
+                timeout = setTimeout(() => {
+                    timeout = null;
+                    if (latestCall) {
+                        const { args: nextArgs, resolve: nextResolve, reject: nextReject } = latestCall;
+                        latestCall = null;
+
+                        executeFunc(nextArgs)
+                            .then(nextResolve)
+                            .catch(nextReject);
+                    }
+                }, waitInMs);
             }
         });
     };
@@ -81,11 +86,10 @@ export default function debounce<T extends any[], R>(
             clearTimeout(timeout);
             timeout = null;
         }
-        if (pendingReject) {
-            pendingReject(new Error(reason));
-            pendingArgs = null;
-            pendingResolve = null;
-            pendingReject = null;
+
+        if (latestCall) {
+            latestCall.reject(new Error(reason));
+            latestCall = null;
         }
     };
 

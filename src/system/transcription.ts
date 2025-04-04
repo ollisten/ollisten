@@ -1,7 +1,7 @@
 import {invoke} from "@tauri-apps/api/core";
 import {Events} from "./events.ts";
 import {getAppConfig, setAppConfig} from "../util/useAppConfig.ts";
-
+import {randomUuid} from "../util/idUtil.ts";
 
 export type DeviceOption = {
     name: string;
@@ -89,7 +89,7 @@ export class Transcription {
 
     private static instance: Transcription | null = null
     private unsubscribe: Unsubscribe | null = null;
-    private readonly subscriberName = Math.random().toString(36).substring(7);
+    private readonly subscriberName = randomUuid();
 
     static get = () => {
         if (!Transcription.instance) {
@@ -242,6 +242,16 @@ export class Transcription {
         }
     }
 
+    public isRunning() {
+        switch (this.getStatus()) {
+            case Status.Stopping:
+            case Status.Stopped:
+                return false;
+            default:
+                return true;
+        }
+    }
+
     public async startTranscription() {
         let startData = this.canStart();
         if (!startData.valid) {
@@ -272,10 +282,10 @@ export class Transcription {
     }
 
     public deviceIdToSource(deviceId: number): DeviceSource {
-        if(this.deviceOutput?.id === deviceId) {
+        if (this.deviceOutput?.id === deviceId) {
             return DeviceSource.Guest;
         }
-            return DeviceSource.Host;
+        return DeviceSource.Host;
     }
 
     /*
@@ -413,7 +423,7 @@ export class Transcription {
     }
 
     onEvent(event: StatusChangeEvent | TranscriptionModelOptionSelectedEvent | TranscriptionModelOptionsUpdatedEvent | DeviceInputOptionSelectedEvent | DeviceOutputUpdatedEvent | DeviceInputOptionsUpdatedEvent) {
-        Events.get().sendInternal(event);
+        Events.get().send(event);
     }
 
     onError(message: string) {

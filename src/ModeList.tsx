@@ -1,11 +1,27 @@
 import {makeStyles} from "@mui/styles";
-import {Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
+import {
+    Button,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TextField
+} from "@mui/material";
 import AgentSelect from "./AgentSelect.tsx";
 import useModes from "./useModes.ts";
 
+const useStyles = makeStyles({
+    createButton: {
+        margin: '1rem',
+    },
+});
+
 export default function ModeList() {
     const classes = useStyles();
-    const {modes, setModeAgents, agentNames} = useModes();
+    const {modes, renameMode, setModeAgents, deleteMode, createMode, agentNames} = useModes();
 
     return (
         <div>
@@ -15,28 +31,37 @@ export default function ModeList() {
                         <TableHead>
                             <TableRow>
                                 <TableCell>Name</TableCell>
-                                <TableCell>Prompt</TableCell>
+                                <TableCell sx={{flexGrow: 5}}>Agents</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {Object.values(modes).map((mode) => (
-                                <TableRow key={mode.label}>
+                            {Object.entries(modes).map(([modeId, mode]) => (
+                                <TableRow key={modeId}>
                                     <TableCell component="th" scope="row">
-                                        <Button color='primary' onClick={() => {
-                                            // TODO
-                                        }}>Start</Button>
-                                    </TableCell>
-                                    <TableCell component="th" scope="row">
-                                        {mode.label}
+                                        <TextField
+                                            value={mode.label}
+                                            onChange={e => {
+                                                renameMode(modeId, e.target.value);
+                                            }}
+                                        />
                                     </TableCell>
                                     <TableCell component="th" scope="row">
                                         <AgentSelect
-                                            label={mode.label}
                                             options={agentNames}
-                                            values={Object.keys(mode.agents)}
-                                            setModeAgents={setModeAgents}
+                                            values={mode.agents}
+                                            onSetAgents={agents => {
+                                                setModeAgents(modeId, agents);
+                                            }}
                                         />
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button
+                                            onClick={() => deleteMode(modeId)}
+                                            color='error'
+                                        >
+                                            Delete
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -46,18 +71,10 @@ export default function ModeList() {
             )}
             <Button
                 className={classes.createButton}
-                onClick={() => {
-                    setModeAgents('New Mode', []);
-                }}
+                onClick={() => createMode()}
             >
-                Create
+                Create new mode
             </Button>
         </div>
     );
 }
-
-const useStyles = makeStyles({
-    createButton: {
-        margin: '1rem',
-    },
-});

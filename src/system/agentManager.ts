@@ -14,6 +14,10 @@ export interface AgentConfig {
     agent: Agent;
 }
 
+export type AgentWindowEvent = {
+    type: 'agent-window-open' | 'agent-window-closed';
+}
+
 export type FileChangeEvent = {
     name: string;
 } & ({
@@ -42,8 +46,13 @@ export class AgentManager {
         return await invoke<AgentConfig[]>('get_all_agent_configs');
     }
 
-    public async managerStart() {
-        const agentConfigs = await this.getAllAgentConfigs();
+    public getRunningAgentNames(): string[] {
+        return Object.keys(this.agentWindows);
+    }
+
+    public async managerStart(agentNamesToStart?: string[]) {
+        const agentConfigs = (await this.getAllAgentConfigs())
+            .filter(agentConfig => !agentNamesToStart || agentNamesToStart.includes(agentConfig.name));
         console.log(`Got agent configs: ${JSON.stringify(agentConfigs)}`);
 
         agentConfigs.forEach(agentConfig => {
@@ -60,7 +69,7 @@ export class AgentManager {
                 case 'file-agent-deleted':
                     const webview = this.agentWindows[event.name];
                     if (webview) {
-                        webview.destroy();
+                        webview.close();
                         delete this.agentWindows[event.name];
                     }
                     break;
@@ -101,21 +110,20 @@ export class AgentManager {
             resizable: true,
             alwaysOnTop: true,
             transparent: true,
-            visible: true,
+            visible: false,
             contentProtected: true,
         });
-        webview.once('tauri://created', () => {
+        this.agentWindows[agentConfig.name] = webview;
+        webview.once('tauri://created', async () => {
+            await webview.show();
+            await Events.get().send({type: 'agent-window-open'} as AgentWindowEvent)
             console.log(`Window successfully created for agent ${agentConfig.name}`);
         });
-        webview.once('tauri://error', (e) => {
+        webview.onCloseRequested(async () => {
             delete this.agentWindows[agentConfig.name];
-            console.error('Error creating window:', e);
-        });
-        webview.once('tauri://closed', () => {
-            delete this.agentWindows[agentConfig.name];
+            await Events.get().send({type: 'agent-window-closed'} as AgentWindowEvent)
             console.log('Window closed');
         });
-        this.agentWindows[agentConfig.name] = webview;
     }
 
     public managerStop() {
@@ -123,7 +131,7 @@ export class AgentManager {
         this.monitorUnlisten = null;
 
         Object.values(this.agentWindows).forEach(webview => {
-            webview.destroy();
+            webview.close();
         });
         this.agentWindows = {};
     }

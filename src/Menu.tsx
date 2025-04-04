@@ -4,6 +4,7 @@ import {ReactNode} from "react";
 
 const pages = [
     {value: 'quick-launch', name: 'Launcher'},
+    {value: 'modes', name: 'Modes'},
     {value: 'agents', name: 'Agents'},
     {value: 'transcription', name: 'Transcription'},
     {value: 'llm-model', name: 'LLM Model'},

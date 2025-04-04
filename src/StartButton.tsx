@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect} from "react";
 import {useForceRender} from "./util/useForceRender.ts";
 import {
     DeviceInputOptionSelectedEvent,

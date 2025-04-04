@@ -1,16 +1,11 @@
-import {useEffect, useState} from "react";
-import {
-    DownloadProgressEvent,
-    ErrorEvent,
-    LoadingProgressEvent,
-    Status,
-    StatusChangeEvent,
-    Transcription
-} from "./system/transcription.ts";
-import {Alert, Chip, Collapse} from "@mui/material";
+import {ComponentProps, useEffect, useState} from "react";
+import {DownloadProgressEvent, ErrorEvent, LoadingProgressEvent, StatusChangeEvent} from "./system/transcription.ts";
+import {Alert, Collapse, IconButton} from "@mui/material";
 import {makeStyles} from "@mui/styles";
 import {Events} from "./system/events.ts";
 import {formatBytesToString} from "./util/unitConversion.ts";
+import {Settings} from "@mui/icons-material";
+import TranscriptionButton from "./TranscriptionButton.tsx";
 
 const useStyles = makeStyles({
     root: {
@@ -20,12 +15,22 @@ const useStyles = makeStyles({
         gap: '0.5rem',
         alignItems: 'left',
     },
+    topBar: {
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    flexGrow: {
+        flexGrow: 1,
+    },
 });
 
-export default function StatusView() {
+export default function AppBar(props: {
+    popoverDirection: ComponentProps<typeof TranscriptionButton>['popoverDirection'];
+    onSettingsClick: () => void;
+}) {
     const classes = useStyles();
 
-    const [statusAlertContent, setStatusAlertContent] = useState<AlertContent>(() => mapStatusToDisplay(Transcription.get().getStatus()));
     const [messageAlertContent, setMessageAlertContent] = useState<AlertContent | null>(null);
     const [messageAlertShow, setMessageAlertShow] = useState<boolean>(false);
 
@@ -40,7 +45,6 @@ export default function StatusView() {
         ) => {
             switch (event.type) {
                 case 'status-change':
-                    setStatusAlertContent(mapStatusToDisplay(event.status));
                     setMessageAlertShow(false);
                     break;
                 case 'TranscriptionDownloadProgress':
@@ -73,7 +77,13 @@ export default function StatusView() {
 
     return (
         <div className={classes.root}>
-            <Chip color={statusAlertContent.severity} variant='outlined' label={statusAlertContent.message}/>
+            <div className={classes.topBar}>
+                <TranscriptionButton popoverDirection={props.popoverDirection}/>
+                <div className={classes.flexGrow}/>
+                <IconButton onClick={props.onSettingsClick}>
+                    <Settings/>
+                </IconButton>
+            </div>
             <Collapse in={messageAlertShow}>
                 <Alert severity={messageAlertContent?.severity || 'error'}
                        variant='outlined'>{messageAlertContent?.message}</Alert>
@@ -85,35 +95,4 @@ export default function StatusView() {
 type AlertContent = {
     message: string,
     severity: 'success' | 'info' | 'warning' | 'error',
-}
-
-const mapStatusToDisplay = (status: Status): AlertContent => {
-    let alertContent: AlertContent = {
-        message: 'Unknown',
-        severity: 'info',
-    }
-    switch (status) {
-        case Status.Starting:
-            alertContent.message = 'Starting...';
-            break;
-        case Status.ModelDownloading:
-            alertContent.message = 'Downloading model...';
-            break;
-        case Status.ModelLoading:
-            alertContent.message = 'Loading model...';
-            break;
-        case Status.TranscriptionStarted:
-            alertContent.message = 'Running';
-            alertContent.severity = 'success';
-            break;
-        case Status.Stopping:
-            alertContent.message = 'Stopping...';
-            alertContent.severity = 'error';
-            break;
-        case Status.Stopped:
-            alertContent.message = 'Stopped';
-            alertContent.severity = 'error';
-            break;
-    }
-    return alertContent;
 }

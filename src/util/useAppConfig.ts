@@ -14,7 +14,7 @@ export type AppConfig = Partial<{
         }>
     };
     modes: {
-        [modeName: string]: {
+        [modeId: string]: {
             label: string;
             agents: string[];
         }

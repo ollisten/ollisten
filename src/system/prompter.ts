@@ -1,5 +1,5 @@
 import Handlebars from "handlebars";
-import {Agent, AgentManager, FileChangeEvent} from "./agentManager.ts";
+import {Agent, FileChangeEvent} from "./agentManager.ts";
 import {Llm} from "./llm.ts";
 import debounce, {DebouncedFunction} from "../util/debounce.ts";
 import {DeviceSource, Transcription, TranscriptionDataEvent} from "./transcription.ts";
@@ -22,6 +22,7 @@ export class Prompter {
     private transcriptionUnsubscribe: Unsubscribe | null = null;
     private transcriptionHistory: string[] = [];
     private transcriptionLatest: string[] = [];
+    private previousAnswer: string | null = null;
     private isPaused: boolean = false;
     private template: HandlebarsTemplateDelegate | null = null;
     private intervalInSec: number | null = null;
@@ -36,12 +37,12 @@ export class Prompter {
     private constructor() {
     }
 
-    public start(watchFileChanges: boolean): Unsubscribe {
+    public start(agent: Agent, watchFileChanges: boolean): Unsubscribe {
         if (this.transcriptionUnsubscribe) {
             return () => {
             };
         }
-        this.prepareInvocation(AgentManager.get().clientGetAgentConfig().agent);
+        this.prepareInvocation(agent);
 
         // TODO fix type
         const eventsToListen: any = ['TranscriptionData']
@@ -56,7 +57,7 @@ export class Prompter {
                     case 'TranscriptionData':
                         if (this.isPaused || !this.debouncedInvoke) return;
                         let transcriptionStr = event.text;
-                        switch(Transcription.get().deviceIdToSource(event.deviceId)) {
+                        switch (Transcription.get().deviceIdToSource(event.deviceId)) {
                             case DeviceSource.Guest:
                                 transcriptionStr = `Guest: ${transcriptionStr}`;
                                 break;
@@ -69,7 +70,7 @@ export class Prompter {
                         this.debouncedInvoke().catch(console.error);
                         break;
                     case 'file-agent-deleted':
-                        getCurrentWindow().destroy();
+                        getCurrentWindow().close();
                         break;
                     case 'file-agent-created':
                     case 'file-agent-modified':
@@ -108,8 +109,13 @@ export class Prompter {
                 const event = await this.invoke(
                     transcriptionHistoryStr,
                     transcriptionLatestStr,
+                    this.previousAnswer,
                 );
-                if(event) Events.get().sendInternal(event);
+                if (event) {
+                    this.previousAnswer = event.answer;
+                    Events.get().sendInternal(event)
+                }
+                ;
             }, intervalInSec * 1000, true);
         }
     }
@@ -117,6 +123,7 @@ export class Prompter {
     public async invoke(
         transcriptionHistoryStr: string,
         transcriptionLatestStr: string,
+        previousAnswer: string | null,
     ): Promise<LlmResponseEvent | null> {
         if (!transcriptionLatestStr || this.isPaused || !this.template) {
             return null
@@ -124,6 +131,7 @@ export class Prompter {
         const prompt = this.template(this.getTemplateInput(
             transcriptionHistoryStr,
             transcriptionLatestStr,
+            previousAnswer,
         ));
         const answer = await Llm.get().talk(prompt);
         return {
@@ -135,11 +143,18 @@ export class Prompter {
         };
     }
 
-    private getTemplateInput(transcriptionHistory: string, transcriptionLatest: string): object {
+    private getTemplateInput(
+        transcriptionHistory: string,
+        transcriptionLatest: string,
+        previousAnswer: string | null,
+    ): object {
         return {
             transcription: {
                 all: transcriptionHistory,
                 latest: transcriptionLatest
+            },
+            answer: {
+                previous: previousAnswer || ''
             },
         }
     }

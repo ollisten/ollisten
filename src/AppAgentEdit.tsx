@@ -1,6 +1,6 @@
 import {makeStyles} from "@mui/styles";
 import {Status, Transcription} from "./system/transcription.ts";
-import {AgentConfig} from "./system/agentManager.ts";
+import {AgentConfig, AgentManager} from "./system/agentManager.ts";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Button, Slider, Tab, Tabs, TextField, Typography} from "@mui/material";
 import {invoke} from "@tauri-apps/api/core";
@@ -9,6 +9,7 @@ import {Events} from "./system/events.ts";
 import {LlmResponseEvent, Prompter} from "./system/prompter.ts";
 import clsx from "clsx";
 import debounce from "./util/debounce.ts";
+import {useForceRender} from "./util/useForceRender.ts";
 
 Transcription.get(); // Required to subscribe to transcription events
 let initialAgentConfig: AgentConfig = (() => {
@@ -27,6 +28,8 @@ enum TestSource {
 export default function AppAgentEdit() {
     const classes = useStyles();
 
+    const agentConfig = useMemo(() => AgentManager.get()
+        .clientGetAgentConfig(), []);
     const [testSource, setTestSource] = useState<TestSource>(() => {
         switch (Transcription.get().getStatus()) {
             case Status.Starting:
@@ -43,14 +46,13 @@ export default function AppAgentEdit() {
     const [changed, setChanged] = useState<boolean>(false);
     const [name, setName] = useState<string>(initialAgentConfig.name);
     const [prompt, setPrompt] = useState<string>(initialAgentConfig.agent.prompt);
-    const [compiledPrompt, setCompiledPrompt] = useState<string>('');
     const [intervalInSec, setIntervalInSec] = useState<number>(initialAgentConfig.agent.intervalInSec || 3);
     const [transcription, setTranscription] = useState<string>('Guest: Not too bad.');
     const [transcriptionHistory, setTranscriptionHistory] = useState<string>('Guest: Hey' +
         '\nHost: Hi' +
         '\nGuest: How are you?' +
         '\nHost: I\'m good, how about you?');
-    const [answer, setAnswer] = useState<string | null>(null);
+    const answerRef = useRef<string | null>(null);
 
     // Update agent during live mode
     useEffect(() => {
@@ -60,17 +62,17 @@ export default function AppAgentEdit() {
     // Invoke during manual mode
     const invokeDebounced = useMemo(() => {
         return debounce(async (tHistory: string, t: string) => {
-            return await Prompter.get().invoke(tHistory, t);
+            return await Prompter.get().invoke(tHistory, t, answerRef.current);
         }, intervalInSec * 1000, false);
     }, [intervalInSec]);
+    const forceRender = useForceRender();
     useEffect(() => {
         if (testSource === TestSource.Manual) {
             invokeDebounced(transcriptionHistory, transcription)
                 .then(event => {
-                    if(event) {
-                        setAnswer(event.answer);
-                        setCompiledPrompt(event.prompt);
-                        // Skip setting transcription
+                    if (event) {
+                        answerRef.current = event.answer;
+                        forceRender()
                     }
                 });
         }
@@ -89,11 +91,11 @@ export default function AppAgentEdit() {
                 break;
             case TestSource.Live:
                 Prompter.get().resume();
-                Prompter.get().start(false);
+                Prompter.get().start(agentConfig.agent, false);
                 Transcription.get().startTranscription();
                 break;
         }
-    }, [testSource]);
+    }, [testSource, agentConfig]);
 
     // Scroll history to bottom
     const transcriptionHistoryRef = useRef<HTMLInputElement>();
@@ -115,10 +117,10 @@ export default function AppAgentEdit() {
         ) => {
             switch (event.type) {
                 case 'llm-response':
-                    setAnswer(event.answer);
+                    answerRef.current = event.answer;
+                    // This also forces a re-render for the answer
                     setTranscription(event.transcriptionLatest)
                     setTranscriptionHistory(event.transcriptionHistory)
-                    setCompiledPrompt(event.prompt)
                     break;
                 default:
                     console.error(`Unexpected event: ${event}`);
@@ -172,6 +174,9 @@ export default function AppAgentEdit() {
                     minRows={15}
                     maxRows={30}
                 />
+                <Typography gutterBottom>
+                    {`Available Variables: {{ transcription.all }} {{ transcription.latest }} {{ answer.previous }}`}
+                </Typography>
                 <div className={classes.actionBar}>
                     <Button
                         color='warning'
@@ -188,7 +193,7 @@ export default function AppAgentEdit() {
                         disabled={initialAgentConfig.name !== name || initialAgentConfig.name === ''}
                         onClick={async () => {
                             await invoke<void>('delete_agent_config', {name});
-                            await getCurrentWindow().destroy();
+                            await getCurrentWindow().close();
                         }}
                     >Delete</Button>
                     <div className={classes.grow}/>
@@ -231,8 +236,8 @@ export default function AppAgentEdit() {
                     multiline
                     value={transcriptionHistory || ''}
                     onChange={(e) => {
-                        if(testSource === TestSource.Manual) {
-                        setTranscriptionHistory(e.target.value);
+                        if (testSource === TestSource.Manual) {
+                            setTranscriptionHistory(e.target.value);
                         }
                     }}
                     rows={8}
@@ -244,7 +249,7 @@ export default function AppAgentEdit() {
                     multiline
                     value={transcription || ''}
                     onChange={(e) => {
-                        if(testSource === TestSource.Manual) {
+                        if (testSource === TestSource.Manual) {
                             setTranscription(e.target.value);
                         }
                     }}
@@ -265,7 +270,7 @@ export default function AppAgentEdit() {
                     variant='outlined'
                     disabled
                     multiline
-                    value={answer}
+                    value={answerRef.current}
                     minRows={8}
                     maxRows={16}
                 />

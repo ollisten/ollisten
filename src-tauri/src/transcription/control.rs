@@ -51,7 +51,11 @@ pub async fn start_transcription(
     );
 
     // First, stop any existing transcription
-    stop_transcription(state.clone()).await?;
+    let mut active_sessions = state.active_sessions.lock().await;
+    for (id, handle) in active_sessions.drain() {
+        info!("Stopping transcription for device {}", id);
+        handle.abort();
+    }
 
     // Extract listeners from state
     let listeners = Arc::clone(&state.listeners);
@@ -98,9 +102,6 @@ pub async fn start_transcription(
     let mut whisper_model = state.whisper_model.lock().await;
     *whisper_model = Some(model.clone());
     drop(whisper_model); // Release the lock
-
-    // Start transcription for each device
-    let mut active_sessions = state.active_sessions.lock().await;
 
     for device_id in device_ids {
         // Set up the microphone

@@ -1,14 +1,18 @@
 import {makeStyles} from "@mui/styles";
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {LlmResponseEvent, Prompter} from "./system/prompter.ts";
 import {Events} from "./system/events.ts";
 import {AppConfig, getAppConfig, setAppConfigDebounced, useAppConfig} from "./util/useAppConfig.ts";
 import {getCurrentWindow} from '@tauri-apps/api/window';
 import {Transcription} from "./system/transcription.ts";
-import {Button, Collapse} from "@mui/material";
+import {Collapse, IconButton, Typography} from "@mui/material";
 import {UnlistenFn} from "@tauri-apps/api/event";
-
-
+import {AgentManager} from "./system/agentManager.ts";
+import TranscriptionButton from "./TranscriptionButton.tsx";
+import {Close} from "@mui/icons-material";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import TimeAgo from "react-timeago";
 
 
 Transcription.get(); // Required to subscribe to transcription events
@@ -16,11 +20,14 @@ Transcription.get(); // Required to subscribe to transcription events
 export default function AppAgent() {
     const classes = useStyles();
 
-    const [isPaused, setIsPaused] = useState<boolean>(false);
-    const [isWindowFocused, setIsWindowFocused] = useState<boolean>(true);
-    const [isDebug, setIsDebug] = useState<boolean>(false);
-    const [transcription, setTranscription] = useState<string | null>(null);
+    const agentConfig = useMemo(() => AgentManager.get()
+        .clientGetAgentConfig(), []);
+    const [isWindowFocused, setIsWindowFocused] = useState<boolean>(false);
+    useEffect(() => {
+        getCurrentWindow().isFocused().then(setIsWindowFocused);
+    }, []);
     const [answer, setAnswer] = useState<string | null>(null);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
     const {loading} = useAppConfig();
 
@@ -65,8 +72,8 @@ export default function AppAgent() {
         ) => {
             switch (event.type) {
                 case 'llm-response':
-                    setTranscription(event.transcriptionLatest);
                     setAnswer(event.answer);
+                    setLastUpdated(new Date());
                     break;
                 default:
                     console.error(`Unexpected event: ${event}`);
@@ -75,9 +82,8 @@ export default function AppAgent() {
         });
     }, []);
 
-    useEffect(() => {
-        return Prompter.get().start(true);
-    }, []);
+    useEffect(() => Prompter.get()
+        .start(agentConfig.agent, true), [agentConfig]);
 
     if (loading) {
         return null;
@@ -85,39 +91,22 @@ export default function AppAgent() {
 
     return (
         <main className={classes.root} data-tauri-drag-region="">
-            <Collapse in={isDebug}>
-                <div data-tauri-drag-region="">
-                    {transcription || ''}
-                    <hr className={classes.hr} />
-                </div>
-            </Collapse>
             <div className={classes.output} data-tauri-drag-region="">
-                {answer || ''}
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer || ''}</ReactMarkdown>;
             </div>
             <Collapse in={isWindowFocused}>
+                <hr className={classes.hr}/>
                 <div className={classes.actionBar} data-tauri-drag-region="">
-                    <Button onClick={() => {
-                        if (isPaused) {
-                            Prompter.get().resume();
-                            setIsPaused(false);
-                        } else {
-                            Prompter.get().pause();
-                            setIsPaused(true);
-                        }
-                    }}>
-                        {isPaused ? 'Resume' : 'Pause'}
-                    </Button>
+                    <IconButton color='error' onClick={() => getCurrentWindow().close()}>
+                        <Close/>
+                    </IconButton>
+                    <TranscriptionButton popoverDirection='right'/>
                     <div data-tauri-drag-region="" className={classes.fill}/>
-                    <Button color='warning' onClick={() => {
-                        setIsDebug(!isDebug)
-                    }}>
-                        Debug
-                    </Button>
-                    <Button color='error' onClick={() => {
-                        getCurrentWindow().destroy()
-                    }}>
-                        Close
-                    </Button>
+                    <Typography variant='overline'>
+                        {agentConfig.name}
+                    </Typography>
+                    <div data-tauri-drag-region="" className={classes.fill}/>
+                    {lastUpdated && <TimeAgo date={lastUpdated}/>}
                 </div>
             </Collapse>
         </main>
@@ -129,8 +118,8 @@ const useStyles = makeStyles({
         background: 'transparent',
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
-        width: '100vw',
+        minHeight: '100vh',
+        minWidth: '100vw',
         padding: '1rem',
         overflow: 'scroll',
         maxHeight: '30%',
@@ -141,6 +130,7 @@ const useStyles = makeStyles({
     },
     actionBar: {
         display: 'flex',
+        alignItems: 'center',
     },
     fill: {
         flexGrow: 1,

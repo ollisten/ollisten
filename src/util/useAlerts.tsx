@@ -1,4 +1,5 @@
 import {useCallback} from "react";
+import {randomUuid} from "./idUtil.ts";
 
 /*
  * Alert storage
@@ -27,7 +28,7 @@ const removeAlert = (id: string) => {
     }
 }
 export const addAlert = (alert: AlertDefinition) => {
-    const id = alert.id || Math.random().toString(36).substring(7);
+    const id = alert.id || randomUuid();
     setAlert({
         id,
         dismissible: true,

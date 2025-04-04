@@ -5,13 +5,14 @@ import {Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, T
 import {WebviewWindow} from "@tauri-apps/api/webviewWindow";
 import {getCurrentWindow} from "@tauri-apps/api/window";
 import useAgents from "./useAgents.ts";
+import {randomUuid} from "./util/idUtil.ts";
 
 export default function AgentList() {
     const classes = useStyles();
     const agents = useAgents();
 
     const openAgentEdit = useCallback((name: string, agent: Agent) => {
-        const windowLabel = `agentEdit-${Math.random().toString(36).substring(7)}`;
+        const windowLabel = `agentEdit-${randomUuid()}`;
         const agentConfig: AgentConfig = {name, agent};
         const webview = new WebviewWindow(windowLabel, {
             url: `agent-edit.html?agentConfig=${encodeURIComponent(JSON.stringify(agentConfig))}`,
