@@ -134,7 +134,6 @@ export default function TranscriptionButton(props: {
         <>
             <IconButton
                 color={buttonColor}
-                disabled={buttonDisabled}
                 onClick={async e => {
                     e.preventDefault();
                     if (buttonDisabled) {

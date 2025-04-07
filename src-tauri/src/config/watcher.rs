@@ -25,10 +25,6 @@ pub async fn start_config_watcher(
         return Ok(());
     }
 
-    // Get home directory
-    let home_dir =
-        dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
-
     // Create the full path to the agents directory
     let agents_dir = get_app_sub_path("agent")?;
 

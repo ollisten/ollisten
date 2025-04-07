@@ -82,8 +82,10 @@ export default function AppAgent() {
         });
     }, []);
 
-    useEffect(() => Prompter.get()
-        .start(agentConfig.agent, true), [agentConfig]);
+    useEffect(() => {
+        Prompter.get().configureAgent(agentConfig.agent);
+        Prompter.get().start(agentConfig.name);
+    }, [agentConfig]);
 
     if (loading) {
         return null;

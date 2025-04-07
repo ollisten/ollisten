@@ -23,8 +23,8 @@ lazy_static! {
     static ref AudioDeviceMutex: Mutex<()> = Mutex::new(());
 }
 
-const LOCAL_ECHO_INTERNAL_UID: &str = "LocalEcho_INTERNAL";
-const LOCAL_ECHO_INTERNAL_DISPLAY_NAME: &str = "LocalEcho";
+const LOCAL_ECHO_INTERNAL_UID: &str = "Ollisten_INTERNAL";
+const LOCAL_ECHO_INTERNAL_DISPLAY_NAME: &str = "Ollisten";
 
 pub fn fetch_hidden_output_device_macos() -> Result<Option<DeviceOption>, String> {
     // Acquire lock before audio operations

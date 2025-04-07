@@ -7,9 +7,18 @@ use tauri::State;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct StructuredOutput {
+    pub schema: String,
+    pub mapper: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Agent {
     pub interval_in_sec: Option<f64>,
+    pub transcription_history_max_chars: Option<u64>,
     pub prompt: String,
+    pub structured_output: Option<StructuredOutput>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

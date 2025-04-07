@@ -6,7 +6,14 @@ import {currentMonitor} from "@tauri-apps/api/window";
 
 export interface Agent {
     intervalInSec?: number;
+    transcriptionHistoryMaxChars: number | null;
     prompt: string;
+    structuredOutput: null | {
+        // JSON schema required for LLM output
+        schema: string;
+        // Mustache template to map LLM output JSON to user-facing output
+        mapper: string;
+    };
 }
 
 export interface AgentConfig {

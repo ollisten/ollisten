@@ -190,7 +190,7 @@
 //
 // fn get_models_dir() -> Result<PathBuf> {
 //     let models_dir = get_app_path()?
-//         .join(".localecho")
+//         .join(".ollisten")
 //         .join("models")
 //         .join("llama");
 //     create_dir_if_not_exists(&models_dir)?;

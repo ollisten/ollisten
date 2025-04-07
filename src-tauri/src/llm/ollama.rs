@@ -1,10 +1,16 @@
 use crate::llm::router::LlmRouterState;
 use crate::llm::types::LlmModel;
-use langchain_rust::language_models::llm::LLM;
-use langchain_rust::llm::client::OllamaClient;
-use langchain_rust::llm::ollama::client::Ollama;
 use log::info;
+use ollama_rs::generation::completion::request::GenerationRequest;
+use ollama_rs::generation::parameters::{schema_for, FormatType, JsonStructure};
+use ollama_rs::Ollama;
+use schemars::{
+    gen::SchemaGenerator,
+    schema::{RootSchema, Schema},
+    JsonSchema,
+};
 use serde::{Deserialize, Serialize};
+use serde_json::{self, Value as JsonValue, Value};
 use std::path::Path;
 use std::time::Duration;
 use tauri::State;
@@ -129,7 +135,7 @@ fn start_ollama_serve() -> Result<(), std::io::Error> {
     Ok(())
 }
 pub async fn get_llm_model_options_ollama() -> Result<Vec<LlmModel>, String> {
-    OllamaClient::default()
+    Ollama::default()
         .list_local_models()
         .await
         .map(|models| {
@@ -155,12 +161,27 @@ pub async fn setup_ollama(state: State<'_, LlmRouterState>, llm_model: &str) -> 
     Ok(())
 }
 
-pub async fn llm_talk_ollama(ollama_config: &OllamaConfig, text: &str) -> Result<String, String> {
-    Ollama::default()
-        .with_model(ollama_config.model_name.to_string())
-        .invoke(text)
+pub async fn llm_talk_ollama(
+    ollama_config: &OllamaConfig,
+    text: &str,
+    structured_output_schema_string: Option<&str>,
+) -> Result<String, String> {
+    let mut request = GenerationRequest::new(ollama_config.model_name.to_string(), text);
+
+    if let Some(schema_string) = structured_output_schema_string {
+        let schema_json = serde_json::from_str(schema_string)
+            .map_err(|e| format!("Error parsing schema JSON: {}", e))?;
+        let schema_structure = JsonStructure::new_for_schema(schema_json);
+        let schema_format = FormatType::StructuredJson(schema_structure);
+        request = request.format(schema_format);
+    }
+
+    let response = Ollama::default()
+        .generate(request)
         .await
-        .map_err(|e| format!("Error invoking Ollama: {}", e))
+        .map_err(|e| format!("Error invoking Ollama: {}", e))?;
+
+    Ok(response.response)
 }
 
 fn to_friendly_size(bytes: u64) -> String {

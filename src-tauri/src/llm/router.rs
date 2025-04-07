@@ -1,6 +1,4 @@
 use crate::llm::ollama::{llm_talk_ollama, OllamaConfig};
-use crate::llm::open_ai::llm_talk_open_ai;
-use langchain_rust::llm::{OpenAI, OpenAIConfig};
 use log::info;
 use std::sync::Arc;
 use tauri::State;
@@ -8,30 +6,33 @@ use tokio::sync::RwLock;
 
 pub struct LlmRouterState {
     pub ollama: Arc<RwLock<Option<OllamaConfig>>>,
-    pub open_ai: Arc<RwLock<Option<OpenAI<OpenAIConfig>>>>,
 }
 
 #[tauri::command]
-pub async fn llm_talk(state: State<'_, LlmRouterState>, text: &str) -> Result<String, String> {
+pub async fn llm_talk(
+    state: State<'_, LlmRouterState>,
+    text: &str,
+    structured_output_schema_string: Option<&str>,
+) -> Result<String, String> {
     info!(
         "LLM request: {}",
-        &text.chars().take(100).collect::<String>()
+        // Cut to 100 chars and remove newlines
+        &text
+            .chars()
+            .take(100)
+            .collect::<String>()
+            .replace('\n', " ")
     );
 
     if let Some(ollama) = state.ollama.read().await.as_ref() {
-        let response = llm_talk_ollama(ollama, text).await?;
+        let response = llm_talk_ollama(ollama, text, structured_output_schema_string).await?;
         info!(
             "LLM ollama response: {}",
-            &response.chars().take(100).collect::<String>()
-        );
-        return Ok(response);
-    }
-
-    if let Some(open_ai) = state.open_ai.read().await.as_ref() {
-        let response = llm_talk_open_ai(open_ai, text).await?;
-        info!(
-            "LLM openai response: {}",
-            &response.chars().take(100).collect::<String>()
+            &response
+                .chars()
+                .take(100)
+                .collect::<String>()
+                .replace('\n', " ")
         );
         return Ok(response);
     }

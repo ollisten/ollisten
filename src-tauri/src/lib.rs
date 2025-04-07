@@ -37,7 +37,6 @@ pub fn run() {
         })
         .manage(LlmRouterState {
             ollama: Arc::new(RwLock::new(None)),
-            open_ai: Arc::new(RwLock::new(None)),
         })
         .plugin(
             tauri_plugin_log::Builder::default()
@@ -49,8 +48,6 @@ pub fn run() {
             llm::router::llm_talk,
             llm::ollama::setup_ollama,
             llm::ollama::start_and_get_llm_model_options_ollama,
-            llm::open_ai::setup_open_ai,
-            llm::open_ai::get_llm_model_options_open_ai,
             audio::devices::get_listen_device_options,
             audio::devices::get_hidden_device,
             audio::driver::is_driver_installed,

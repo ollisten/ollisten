@@ -12,8 +12,14 @@ export type LlmResponseEvent = {
     transcriptionLatest: string;
     prompt: string;
     answer: string;
+    answerJson: object | null; // Provided if using structured output
 }
 type DebouncedInvoke = DebouncedFunction<[], void>;
+
+// Add handlebar helper json that will JSON.stringify
+const HandlebarHelpers: { [name: string]: Function } = {
+    json: (context: object) => JSON.stringify(context, null, 4),
+};
 
 export class Prompter {
 
@@ -23,8 +29,10 @@ export class Prompter {
     private transcriptionHistory: string[] = [];
     private transcriptionLatest: string[] = [];
     private previousAnswer: string | null = null;
-    private isPaused: boolean = false;
+    private previousAnswerJson: object | null = null;
     private template: HandlebarsTemplateDelegate | null = null;
+    private structuredOutputSchema: string | null = null;
+    private structuredOutputMapperTemplate: HandlebarsTemplateDelegate | null = null;
     private intervalInSec: number | null = null;
 
     static get = () => {
@@ -37,16 +45,15 @@ export class Prompter {
     private constructor() {
     }
 
-    public start(agent: Agent, watchFileChanges: boolean): Unsubscribe {
+    public start(watchFileChangesForAgentName?: string): Unsubscribe {
         if (this.transcriptionUnsubscribe) {
             return () => {
             };
         }
-        this.prepareInvocation(agent);
 
         // TODO fix type
         const eventsToListen: any = ['TranscriptionData']
-        if (watchFileChanges) {
+        if (!!watchFileChangesForAgentName) {
             eventsToListen.push('file-agent-created', 'file-agent-deleted', 'file-agent-modified')
         }
         this.transcriptionUnsubscribe = Events.get().subscribe(
@@ -55,7 +62,7 @@ export class Prompter {
             ) => {
                 switch (event.type) {
                     case 'TranscriptionData':
-                        if (this.isPaused || !this.debouncedInvoke) return;
+                        if (!this.debouncedInvoke) return;
                         let transcriptionStr = event.text;
                         switch (Transcription.get().deviceIdToSource(event.deviceId)) {
                             case DeviceSource.Guest:
@@ -70,10 +77,16 @@ export class Prompter {
                         this.debouncedInvoke().catch(console.error);
                         break;
                     case 'file-agent-deleted':
-                        getCurrentWindow().close();
+                        if (event.name === watchFileChangesForAgentName) {
+                            getCurrentWindow().close();
+                        }
                         break;
                     case 'file-agent-created':
                     case 'file-agent-modified':
+                        if (event.name === watchFileChangesForAgentName) {
+                            this.configureAgent(event.agent);
+                        }
+                        break;
                     default:
                         console.error(`Unexpected event: ${event}`);
                         break;
@@ -89,16 +102,15 @@ export class Prompter {
         };
     }
 
-    public pause(): void {
-        this.isPaused = true;
-    }
-
-    public resume(): void {
-        this.isPaused = false;
-    }
-
-    public prepareInvocation(agent: Agent) {
-        this.template = Handlebars.compile(agent.prompt, {});
+    public configureAgent(agent: Agent) {
+        this.template = Handlebars.compile(agent.prompt);
+        if (agent.structuredOutput) {
+            this.structuredOutputSchema = agent.structuredOutput.schema;
+            this.structuredOutputMapperTemplate = Handlebars.compile(agent.structuredOutput.mapper, {});
+        } else {
+            this.structuredOutputSchema = null;
+            this.structuredOutputMapperTemplate = null;
+        }
         const intervalInSec = Math.max(1, agent.intervalInSec || 3);
         if (intervalInSec !== this.intervalInSec || !this.debouncedInvoke) {
             this.intervalInSec = intervalInSec;
@@ -110,12 +122,13 @@ export class Prompter {
                     transcriptionHistoryStr,
                     transcriptionLatestStr,
                     this.previousAnswer,
+                    this.previousAnswerJson,
                 );
                 if (event) {
                     this.previousAnswer = event.answer;
+                    this.previousAnswerJson = event.answerJson || null;
                     Events.get().sendInternal(event)
                 }
-                ;
             }, intervalInSec * 1000, true);
         }
     }
@@ -124,22 +137,34 @@ export class Prompter {
         transcriptionHistoryStr: string,
         transcriptionLatestStr: string,
         previousAnswer: string | null,
+        previousAnswerJson: object | null,
     ): Promise<LlmResponseEvent | null> {
-        if (!transcriptionLatestStr || this.isPaused || !this.template) {
+        if (!transcriptionLatestStr || !this.template) {
             return null
         }
         const prompt = this.template(this.getTemplateInput(
             transcriptionHistoryStr,
             transcriptionLatestStr,
             previousAnswer,
-        ));
-        const answer = await Llm.get().talk(prompt);
+            previousAnswerJson,
+        ), {
+            helpers: HandlebarHelpers,
+        });
+        let answer = await Llm.get().talk(prompt, this.structuredOutputSchema);
+        let answerJson: object | null = null;
+        if (this.structuredOutputMapperTemplate) {
+            answerJson = JSON.parse(answer);
+            answer = this.structuredOutputMapperTemplate(answerJson, {
+                helpers: HandlebarHelpers,
+            });
+        }
         return {
             type: 'llm-response',
             transcriptionHistory: transcriptionHistoryStr,
             transcriptionLatest: transcriptionLatestStr,
             prompt,
             answer,
+            answerJson,
         };
     }
 
@@ -147,6 +172,7 @@ export class Prompter {
         transcriptionHistory: string,
         transcriptionLatest: string,
         previousAnswer: string | null,
+        previousAnswerJson: object | null,
     ): object {
         return {
             transcription: {
@@ -154,7 +180,10 @@ export class Prompter {
                 latest: transcriptionLatest
             },
             answer: {
-                previous: previousAnswer || ''
+                previous: {
+                    text: previousAnswer || '',
+                    json: previousAnswerJson || null
+                },
             },
         }
     }

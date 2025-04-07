@@ -64,8 +64,11 @@ export class Llm {
         }
     }
 
-    public talk(text: string): Promise<string> {
-        return invoke<string>("llm_talk", {text});
+    public talk(text: string, structuredOutputSchemaString: string | null = null): Promise<string> {
+        return invoke<string>("llm_talk", {
+            text,
+            structuredOutputSchemaString,
+        });
     }
 
     public canStart(): boolean {

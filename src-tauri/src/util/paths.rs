@@ -13,7 +13,7 @@ pub fn get_app_path() -> Result<PathBuf, String> {
     let home_dir =
         dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
 
-    let app_dir = home_dir.join(".localecho");
+    let app_dir = home_dir.join(".ollisten");
 
     create_dir_if_not_exists(&app_dir)?;
 

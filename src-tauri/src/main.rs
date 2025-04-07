@@ -6,5 +6,5 @@ mod transcription;
 
 #[tokio::main]
 async fn main() {
-    nitra_lib::run()
+    ollisten_lib::run()
 }

@@ -13,7 +13,7 @@ pub async fn is_driver_installed() -> Result<bool, String> {
     info!("Command: is_driver_installed");
 
     // Define the path to check
-    let driver_path = "/Library/Audio/Plug-Ins/HAL/LocalEcho.driver";
+    let driver_path = "/Library/Audio/Plug-Ins/HAL/Ollisten.driver";
 
     // Check if the directory exists
     if Path::new(driver_path).exists() {
@@ -30,7 +30,7 @@ pub async fn install_driver(app: tauri::AppHandle) -> Result<(), String> {
     // Locate the bundled resource directory
     let resource_path = resource_dir(app.package_info(), &app.env())
         .map_err(|e| format!("Failed to locate resource directory: {}", e))?;
-    let pkg_path = resource_path.join("resources").join("LocalEcho.pkg");
+    let pkg_path = resource_path.join("resources").join("Ollisten.pkg");
 
     // Ensure the package exists
     if !pkg_path.exists() {
