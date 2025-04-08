@@ -13,6 +13,7 @@ import {Close} from "@mui/icons-material";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import TimeAgo from "react-timeago";
+import PrompterButton from "./PrompterButton.tsx";
 
 
 Transcription.get(); // Required to subscribe to transcription events
@@ -94,7 +95,7 @@ export default function AppAgent() {
     return (
         <main className={classes.root} data-tauri-drag-region="">
             <div className={classes.output} data-tauri-drag-region="">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer || ''}</ReactMarkdown>;
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer || ''}</ReactMarkdown>
             </div>
             <Collapse in={isWindowFocused}>
                 <hr className={classes.hr}/>
@@ -103,6 +104,7 @@ export default function AppAgent() {
                         <Close/>
                     </IconButton>
                     <TranscriptionButton popoverDirection='right'/>
+                    <PrompterButton popoverDirection='right' />
                     <div data-tauri-drag-region="" className={classes.fill}/>
                     <Typography variant='overline'>
                         {agentConfig.name}

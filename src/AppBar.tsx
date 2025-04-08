@@ -6,6 +6,7 @@ import {Events} from "./system/events.ts";
 import {formatBytesToString} from "./util/unitConversion.ts";
 import {Settings} from "@mui/icons-material";
 import TranscriptionButton from "./TranscriptionButton.tsx";
+import PrompterButton from "./PrompterButton.tsx";
 
 const useStyles = makeStyles({
     root: {

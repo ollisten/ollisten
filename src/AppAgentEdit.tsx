@@ -11,6 +11,7 @@ import clsx from "clsx";
 import {useForceRender} from "./util/useForceRender.ts";
 import TranscriptionButton from "./TranscriptionButton.tsx";
 import Menu, {Tab} from "./Menu.tsx";
+import PrompterButton from "./PrompterButton.tsx";
 
 Transcription.get(); // Required to subscribe to transcription events
 let initialAgentConfig: AgentConfig = AgentManager.get().clientGetAgentConfig();
@@ -81,6 +82,7 @@ export default function AppAgentEdit() {
     const answerRef = useRef<string | null>(null);
 
     const forceRender = useForceRender();
+    const [invokeLoading, setInvokeLoading] = useState<boolean>(false);
     const doInvoke = useCallback(async () => {
         try {
             const event = await Prompter.get().invoke(
@@ -270,7 +272,6 @@ export default function AppAgentEdit() {
                     <TranscriptionButton popoverDirection='down'/>
                 </Box>
 
-
                 {/* Transcription edit/view */}
                 <Menu>
                     <Tab label='Current'>
@@ -359,7 +360,11 @@ export default function AppAgentEdit() {
 
             </div>
             <div className={clsx(classes.section)} data-tauri-drag-region="">
-                <Typography variant='h5'>Output</Typography>
+                <Box display='flex' flexDirection='row' alignItems='center' gap='0.5em'>
+                    <Typography variant='h5'>Output</Typography>
+                    <PrompterButton popoverDirection='down'/>
+                </Box>
+
                 <Menu
                     hideTabSelection={structuredOutputEnabled ? undefined : true}
                     activePage={structuredOutputEnabled ? undefined : 'Answer'}
@@ -385,7 +390,11 @@ export default function AppAgentEdit() {
                         />
                     </Tab>
                 </Menu>
-                <Button variant='contained' onClick={doInvoke}>Invoke</Button>
+                <Button loading={invokeLoading} variant='contained' onClick={async () => {
+                    setInvokeLoading(true)
+                    await doInvoke();
+                    setInvokeLoading(false)
+                }}>Invoke</Button>
             </div>
         </main>
     );

@@ -70,7 +70,12 @@ export default function AgentList() {
             )}
             <Button
                 className={classes.createButton}
-                onClick={() => openAgentEdit('', {prompt: '', intervalInSec: 3})}
+                onClick={() => openAgentEdit('', {
+                    prompt: '',
+                    intervalInSec: 3,
+                    transcriptionHistoryMaxChars: null,
+                    structuredOutput: null,
+                })}
             >
                 Create
             </Button>

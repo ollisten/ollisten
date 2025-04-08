@@ -6,6 +6,24 @@ import {DeviceSource, Transcription, TranscriptionDataEvent} from "./transcripti
 import {Events, Unsubscribe} from "./events.ts";
 import {getCurrentWindow} from "@tauri-apps/api/window";
 
+export enum PrompterStatus {
+    Stopped,
+    Running,
+    Paused,
+}
+
+export type PrompterEvent = {
+    type: 'prompter-status-changed';
+    status: PrompterStatus;
+}
+export type LlmRequestEvent = {
+    type: 'llm-request';
+    transcriptionHistory: string;
+    transcriptionLatest: string;
+    prompt: string;
+    previousAnswer: string | null;
+    previousAnswerJson: object | null; // Provided if using structured output
+}
 export type LlmResponseEvent = {
     type: 'llm-response';
     transcriptionHistory: string;
@@ -30,6 +48,7 @@ export class Prompter {
     private transcriptionLatest: string[] = [];
     private previousAnswer: string | null = null;
     private previousAnswerJson: object | null = null;
+    private isPaused: boolean = false;
     private template: HandlebarsTemplateDelegate | null = null;
     private structuredOutputSchema: string | null = null;
     private structuredOutputMapperTemplate: HandlebarsTemplateDelegate | null = null;
@@ -43,6 +62,20 @@ export class Prompter {
     }
 
     private constructor() {
+    }
+
+    public getStatus(): PrompterStatus {
+        if (this.transcriptionUnsubscribe) {
+            return this.isPaused ? PrompterStatus.Paused : PrompterStatus.Running;
+        }
+        return PrompterStatus.Stopped;
+    }
+
+    private sendStatusEvent() {
+        Events.get().sendInternal({
+            type: 'prompter-status-changed',
+            status: this.getStatus(),
+        } as PrompterEvent);
     }
 
     public start(watchFileChangesForAgentName?: string): Unsubscribe {
@@ -62,7 +95,7 @@ export class Prompter {
             ) => {
                 switch (event.type) {
                     case 'TranscriptionData':
-                        if (!this.debouncedInvoke) return;
+                        if (this.isPaused || !this.debouncedInvoke) return;
                         let transcriptionStr = event.text;
                         switch (Transcription.get().deviceIdToSource(event.deviceId)) {
                             case DeviceSource.Guest:
@@ -93,13 +126,26 @@ export class Prompter {
                 }
             });
 
+        this.sendStatusEvent(); // Started
+
         return () => {
             this.transcriptionUnsubscribe?.();
             this.transcriptionUnsubscribe = null;
             this.debouncedInvoke?.cancel();
             this.transcriptionHistory.push(this.transcriptionLatest.join("\n"));
             this.transcriptionLatest = [];
+            this.sendStatusEvent(); // Stopped
         };
+    }
+
+    public pause(): void {
+        this.isPaused = true;
+        this.sendStatusEvent(); // Paused
+    }
+
+    public resume(): void {
+        this.isPaused = false;
+        this.sendStatusEvent(); // Resumed
     }
 
     public configureAgent(agent: Agent) {
@@ -115,6 +161,9 @@ export class Prompter {
         if (intervalInSec !== this.intervalInSec || !this.debouncedInvoke) {
             this.intervalInSec = intervalInSec;
             this.debouncedInvoke = debounce(async () => {
+                if (this.isPaused) {
+                    return
+                }
                 const transcriptionHistoryStr = this.transcriptionHistory.join("\n");
                 const transcriptionLatestStr = this.transcriptionLatest.join("\n");
                 this.transcriptionLatest = [];
@@ -127,7 +176,6 @@ export class Prompter {
                 if (event) {
                     this.previousAnswer = event.answer;
                     this.previousAnswerJson = event.answerJson || null;
-                    Events.get().sendInternal(event)
                 }
             }, intervalInSec * 1000, true);
         }
@@ -150,6 +198,15 @@ export class Prompter {
         ), {
             helpers: HandlebarHelpers,
         });
+        const requestEvent: LlmRequestEvent = {
+            type: 'llm-request',
+            transcriptionHistory: transcriptionHistoryStr,
+            transcriptionLatest: transcriptionLatestStr,
+            prompt,
+            previousAnswer,
+            previousAnswerJson,
+        }
+        Events.get().sendInternal(requestEvent)
         let answer = await Llm.get().talk(prompt, this.structuredOutputSchema);
         let answerJson: object | null = null;
         if (this.structuredOutputMapperTemplate) {
@@ -158,7 +215,7 @@ export class Prompter {
                 helpers: HandlebarHelpers,
             });
         }
-        return {
+        const responseEvent: LlmResponseEvent = {
             type: 'llm-response',
             transcriptionHistory: transcriptionHistoryStr,
             transcriptionLatest: transcriptionLatestStr,
@@ -166,6 +223,8 @@ export class Prompter {
             answer,
             answerJson,
         };
+        Events.get().sendInternal(responseEvent)
+        return responseEvent;
     }
 
     private getTemplateInput(

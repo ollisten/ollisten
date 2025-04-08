@@ -10,7 +10,7 @@ import {
 } from "./system/transcription.ts";
 import {Button, IconButton, Popover, Typography} from "@mui/material";
 import {Events} from "./system/events.ts";
-import {VolumeDown, VolumeMute, VolumeOff, VolumeUp} from "@mui/icons-material";
+import {Mic, MicNone, MicOff, VolumeDown, VolumeMute, VolumeOff, VolumeUp} from "@mui/icons-material";
 
 export default function TranscriptionButton(props: {
     popoverDirection?: 'right' | 'up' | 'down';
@@ -40,31 +40,31 @@ export default function TranscriptionButton(props: {
     switch (Transcription.get().getStatus()) {
         case Status.Starting:
             buttonDisabled = true;
-            buttonIcon = <VolumeDown/>;
+            buttonIcon = <MicNone/>;
             buttonPopoverText = 'Starting to listen...';
             buttonColor = 'info';
             break;
         case Status.ModelDownloading:
             buttonDisabled = true;
-            buttonIcon = <VolumeDown/>;
+            buttonIcon = <MicNone/>;
             buttonPopoverText = 'Starting to listen, model is downloading...';
             buttonColor = 'info';
             break;
         case Status.ModelLoading:
             buttonDisabled = true;
-            buttonIcon = <VolumeDown/>;
+            buttonIcon = <MicNone/>;
             buttonPopoverText = 'Starting to listen, model is loading...';
             buttonColor = 'info';
             break;
         case Status.TranscriptionStarted:
             buttonDisabled = false;
-            buttonIcon = <VolumeUp/>;
+            buttonIcon = <Mic/>;
             buttonPopoverText = 'Listening, press to stop.';
             buttonColor = 'success';
             break;
         case Status.Stopping:
             buttonDisabled = true;
-            buttonIcon = <VolumeOff/>;
+            buttonIcon = <MicOff/>;
             buttonPopoverText = 'Stopping listening...';
             buttonColor = 'warning';
             break;
@@ -72,19 +72,19 @@ export default function TranscriptionButton(props: {
             const canStart = Transcription.get().canStart();
             if (canStart.valid) {
                 buttonDisabled = false;
-                buttonIcon = <VolumeMute/>;
+                buttonIcon = <MicOff/>;
                 buttonPopoverText = 'Not listening, press to start.';
                 buttonColor = 'inherit';
             } else {
                 buttonDisabled = true;
-                buttonIcon = <VolumeMute/>;
+                buttonIcon = <MicOff/>;
                 buttonPopoverText = 'Not listening and cannot start: ' + canStart.error;
                 buttonColor = 'error';
             }
             break;
         default:
             buttonDisabled = true;
-            buttonIcon = <VolumeMute/>;
+            buttonIcon = <MicNone/>;
             buttonPopoverText = 'Unknown status';
             buttonColor = 'inherit';
             break;
