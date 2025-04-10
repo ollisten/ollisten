@@ -5,6 +5,7 @@ import {VolumeMute, VolumeOff, VolumeUp} from "@mui/icons-material";
 import {LlmRequestEvent, LlmResponseEvent, Prompter, PrompterEvent, PrompterStatus} from "./system/prompter.ts";
 
 export default function PrompterButton(props: {
+    agentName: string;
     popoverDirection?: 'right' | 'up' | 'down';
 }) {
 
@@ -14,6 +15,9 @@ export default function PrompterButton(props: {
         return Events.get().subscribe([
             'prompter-status-changed', "llm-request", "llm-response"
         ], (event: PrompterEvent | LlmRequestEvent | LlmResponseEvent) => {
+            if (event.agentName !== props.agentName) {
+                return;
+            }
             switch (event.type) {
                 case 'prompter-status-changed':
                     setPrompterStatus(event.status);

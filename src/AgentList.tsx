@@ -3,7 +3,6 @@ import {useCallback} from "react";
 import {Agent, AgentConfig} from "./system/agentManager.ts";
 import {Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
 import {WebviewWindow} from "@tauri-apps/api/webviewWindow";
-import {getCurrentWindow} from "@tauri-apps/api/window";
 import useAgents from "./useAgents.ts";
 import {randomUuid} from "./util/idUtil.ts";
 
@@ -21,7 +20,6 @@ export default function AgentList() {
             width: 1440,
             height: 900,
             resizable: true,
-            parent: getCurrentWindow(),
             visible: true,
             contentProtected: true,
         });

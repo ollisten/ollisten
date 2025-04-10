@@ -7,6 +7,7 @@ import {formatBytesToString} from "./util/unitConversion.ts";
 import {Settings} from "@mui/icons-material";
 import TranscriptionButton from "./TranscriptionButton.tsx";
 import PrompterButton from "./PrompterButton.tsx";
+import DebugButton from "./DebugButton.tsx";
 
 const useStyles = makeStyles({
     root: {
@@ -29,6 +30,7 @@ const useStyles = makeStyles({
 export default function AppBar(props: {
     popoverDirection: ComponentProps<typeof TranscriptionButton>['popoverDirection'];
     onSettingsClick: () => void;
+    isEditing: boolean;
 }) {
     const classes = useStyles();
 
@@ -80,6 +82,9 @@ export default function AppBar(props: {
         <div className={classes.root}>
             <div className={classes.topBar}>
                 <TranscriptionButton popoverDirection={props.popoverDirection}/>
+                <Collapse in={props.isEditing} orientation='horizontal'>
+                    <DebugButton/>
+                </Collapse>
                 <div className={classes.flexGrow}/>
                 <IconButton onClick={props.onSettingsClick}>
                     <Settings/>

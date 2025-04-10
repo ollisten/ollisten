@@ -5,15 +5,14 @@ import {Events} from "./system/events.ts";
 import {AppConfig, getAppConfig, setAppConfigDebounced, useAppConfig} from "./util/useAppConfig.ts";
 import {getCurrentWindow} from '@tauri-apps/api/window';
 import {Transcription} from "./system/transcription.ts";
-import {Collapse, IconButton, Typography} from "@mui/material";
+import {IconButton, Typography} from "@mui/material";
 import {UnlistenFn} from "@tauri-apps/api/event";
 import {AgentManager} from "./system/agentManager.ts";
 import TranscriptionButton from "./TranscriptionButton.tsx";
 import {Close} from "@mui/icons-material";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import TimeAgo from "react-timeago";
 import PrompterButton from "./PrompterButton.tsx";
+import {LlmMessage} from "./LlmMessage.tsx";
 
 
 Transcription.get(); // Required to subscribe to transcription events
@@ -71,6 +70,9 @@ export default function AppAgent() {
         return Events.get().subscribe('llm-response', (
             event: LlmResponseEvent
         ) => {
+            if (event.agentName !== agentConfig.name) {
+                return;
+            }
             switch (event.type) {
                 case 'llm-response':
                     setAnswer(event.answer);
@@ -81,11 +83,11 @@ export default function AppAgent() {
                     break;
             }
         });
-    }, []);
+    }, [agentConfig.name]);
 
     useEffect(() => {
-        Prompter.get().configureAgent(agentConfig.agent);
-        Prompter.get().start(agentConfig.name);
+        Prompter.get().configureAgent(agentConfig);
+        Prompter.get().start(true);
     }, [agentConfig]);
 
     if (loading) {
@@ -95,24 +97,21 @@ export default function AppAgent() {
     return (
         <main className={classes.root} data-tauri-drag-region="">
             <div className={classes.output} data-tauri-drag-region="">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer || ''}</ReactMarkdown>
+                <LlmMessage text={answer || ''}/>
             </div>
-            <Collapse in={isWindowFocused}>
-                <hr className={classes.hr}/>
-                <div className={classes.actionBar} data-tauri-drag-region="">
-                    <IconButton color='error' onClick={() => getCurrentWindow().close()}>
-                        <Close/>
-                    </IconButton>
-                    <TranscriptionButton popoverDirection='right'/>
-                    <PrompterButton popoverDirection='right' />
-                    <div data-tauri-drag-region="" className={classes.fill}/>
-                    <Typography variant='overline'>
-                        {agentConfig.name}
-                    </Typography>
-                    <div data-tauri-drag-region="" className={classes.fill}/>
-                    {lastUpdated && <TimeAgo date={lastUpdated}/>}
-                </div>
-            </Collapse>
+            <div className={classes.actionBar} data-tauri-drag-region="">
+                <IconButton color='error' onClick={() => getCurrentWindow().destroy()}>
+                    <Close/>
+                </IconButton>
+                <TranscriptionButton popoverDirection='right'/>
+                <PrompterButton agentName={agentConfig.name} popoverDirection='right'/>
+                <div data-tauri-drag-region="" className={classes.fill}/>
+                <Typography variant='overline'>
+                    {agentConfig.name}
+                </Typography>
+                <div data-tauri-drag-region="" className={classes.fill}/>
+                {lastUpdated && <TimeAgo date={lastUpdated}/>}
+            </div>
         </main>
     );
 }
@@ -129,12 +128,13 @@ const useStyles = makeStyles({
         maxHeight: '30%',
     },
     output: {
-        overflow: 'scroll',
+        overflowY: 'scroll',
         flexGrow: 1,
     },
     actionBar: {
         display: 'flex',
         alignItems: 'center',
+        flexShrink: 0,
     },
     fill: {
         flexGrow: 1,

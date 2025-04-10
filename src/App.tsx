@@ -28,7 +28,7 @@ export default function App() {
         <main
             className={classes.root}
         >
-            <AppBar popoverDirection={isEditing ? 'right' : 'down'} onSettingsClick={() => {
+            <AppBar popoverDirection={isEditing ? 'right' : 'down'} isEditing={isEditing} onSettingsClick={() => {
                 if (isEditing) {
                     // If changed, change in tauri.conf.json
                     setActivePage('Launcher');

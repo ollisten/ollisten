@@ -104,7 +104,7 @@ export default function AppAgentEdit() {
 
     // Configure prompter
     useEffect(() => {
-        Prompter.get().configureAgent(currentAgentConfig.agent);
+        Prompter.get().configureAgent(currentAgentConfig);
     }, [currentAgentConfig]);
     useEffect(() => Prompter.get().start(), []);
 
@@ -112,6 +112,9 @@ export default function AppAgentEdit() {
         return Events.get().subscribe('llm-response', (
             event: LlmResponseEvent
         ) => {
+            if (event.agentName !== currentAgentConfig.name) {
+                return;
+            }
             switch (event.type) {
                 case 'llm-response':
                     answerRef.current = event.answer;
@@ -124,7 +127,7 @@ export default function AppAgentEdit() {
                     break;
             }
         });
-    }, []);
+    }, [currentAgentConfig.name]);
 
     return (
         <main className={classes.root} data-tauri-drag-region="">
@@ -362,7 +365,7 @@ export default function AppAgentEdit() {
             <div className={clsx(classes.section)} data-tauri-drag-region="">
                 <Box display='flex' flexDirection='row' alignItems='center' gap='0.5em'>
                     <Typography variant='h5'>Output</Typography>
-                    <PrompterButton popoverDirection='down'/>
+                    <PrompterButton agentName={currentAgentConfig.name} popoverDirection='down'/>
                 </Box>
 
                 <Menu

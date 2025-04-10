@@ -1,4 +1,3 @@
-use crate::audio::macos_core_audio::fetch_hidden_output_device_macos;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::process::Command;

@@ -1,5 +1,5 @@
 import Handlebars from "handlebars";
-import {Agent, FileChangeEvent} from "./agentManager.ts";
+import {AgentConfig, FileChangeEvent} from "./agentManager.ts";
 import {Llm} from "./llm.ts";
 import debounce, {DebouncedFunction} from "../util/debounce.ts";
 import {DeviceSource, Transcription, TranscriptionDataEvent} from "./transcription.ts";
@@ -14,10 +14,12 @@ export enum PrompterStatus {
 
 export type PrompterEvent = {
     type: 'prompter-status-changed';
+    agentName: string;
     status: PrompterStatus;
 }
 export type LlmRequestEvent = {
     type: 'llm-request';
+    agentName: string;
     transcriptionHistory: string;
     transcriptionLatest: string;
     prompt: string;
@@ -26,6 +28,7 @@ export type LlmRequestEvent = {
 }
 export type LlmResponseEvent = {
     type: 'llm-response';
+    agentName: string;
     transcriptionHistory: string;
     transcriptionLatest: string;
     prompt: string;
@@ -49,6 +52,7 @@ export class Prompter {
     private previousAnswer: string | null = null;
     private previousAnswerJson: object | null = null;
     private isPaused: boolean = false;
+    private agentName: string | null = null;
     private template: HandlebarsTemplateDelegate | null = null;
     private structuredOutputSchema: string | null = null;
     private structuredOutputMapperTemplate: HandlebarsTemplateDelegate | null = null;
@@ -71,14 +75,18 @@ export class Prompter {
         return PrompterStatus.Stopped;
     }
 
-    private sendStatusEvent() {
-        Events.get().sendInternal({
+    private async sendStatusEvent() {
+        if (!this.agentName) {
+            return;
+        }
+        await Events.get().send({
             type: 'prompter-status-changed',
+            agentName: this.agentName,
             status: this.getStatus(),
         } as PrompterEvent);
     }
 
-    public start(watchFileChangesForAgentName?: string): Unsubscribe {
+    public start(watchFileChanges?: boolean): Unsubscribe {
         if (this.transcriptionUnsubscribe) {
             return () => {
             };
@@ -86,7 +94,7 @@ export class Prompter {
 
         // TODO fix type
         const eventsToListen: any = ['TranscriptionData']
-        if (!!watchFileChangesForAgentName) {
+        if (!!watchFileChanges && !!this.agentName) {
             eventsToListen.push('file-agent-created', 'file-agent-deleted', 'file-agent-modified')
         }
         this.transcriptionUnsubscribe = Events.get().subscribe(
@@ -110,14 +118,14 @@ export class Prompter {
                         this.debouncedInvoke().catch(console.error);
                         break;
                     case 'file-agent-deleted':
-                        if (event.name === watchFileChangesForAgentName) {
+                        if (event.name === this.agentName) {
                             getCurrentWindow().close();
                         }
                         break;
                     case 'file-agent-created':
                     case 'file-agent-modified':
-                        if (event.name === watchFileChangesForAgentName) {
-                            this.configureAgent(event.agent);
+                        if (event.name === this.agentName) {
+                            this.configureAgent(event);
                         }
                         break;
                     default:
@@ -138,26 +146,27 @@ export class Prompter {
         };
     }
 
-    public pause(): void {
+    public async pause() {
         this.isPaused = true;
-        this.sendStatusEvent(); // Paused
+        await this.sendStatusEvent(); // Paused
     }
 
-    public resume(): void {
+    public async resume() {
         this.isPaused = false;
-        this.sendStatusEvent(); // Resumed
+        await this.sendStatusEvent(); // Resumed
     }
 
-    public configureAgent(agent: Agent) {
-        this.template = Handlebars.compile(agent.prompt);
-        if (agent.structuredOutput) {
-            this.structuredOutputSchema = agent.structuredOutput.schema;
-            this.structuredOutputMapperTemplate = Handlebars.compile(agent.structuredOutput.mapper, {});
+    public configureAgent(agentConfig: AgentConfig) {
+        this.agentName = agentConfig.name;
+        this.template = Handlebars.compile(agentConfig.agent.prompt);
+        if (agentConfig.agent.structuredOutput) {
+            this.structuredOutputSchema = agentConfig.agent.structuredOutput.schema;
+            this.structuredOutputMapperTemplate = Handlebars.compile(agentConfig.agent.structuredOutput.mapper, {});
         } else {
             this.structuredOutputSchema = null;
             this.structuredOutputMapperTemplate = null;
         }
-        const intervalInSec = Math.max(1, agent.intervalInSec || 3);
+        const intervalInSec = Math.max(1, agentConfig.agent.intervalInSec || 3);
         if (intervalInSec !== this.intervalInSec || !this.debouncedInvoke) {
             this.intervalInSec = intervalInSec;
             this.debouncedInvoke = debounce(async () => {
@@ -187,7 +196,7 @@ export class Prompter {
         previousAnswer: string | null,
         previousAnswerJson: object | null,
     ): Promise<LlmResponseEvent | null> {
-        if (!transcriptionLatestStr || !this.template) {
+        if (!transcriptionLatestStr || !this.agentName || !this.template) {
             return null
         }
         const prompt = this.template(this.getTemplateInput(
@@ -200,13 +209,14 @@ export class Prompter {
         });
         const requestEvent: LlmRequestEvent = {
             type: 'llm-request',
+            agentName: this.agentName,
             transcriptionHistory: transcriptionHistoryStr,
             transcriptionLatest: transcriptionLatestStr,
             prompt,
             previousAnswer,
             previousAnswerJson,
         }
-        Events.get().sendInternal(requestEvent)
+        await Events.get().send(requestEvent)
         let answer = await Llm.get().talk(prompt, this.structuredOutputSchema);
         let answerJson: object | null = null;
         if (this.structuredOutputMapperTemplate) {
@@ -217,13 +227,14 @@ export class Prompter {
         }
         const responseEvent: LlmResponseEvent = {
             type: 'llm-response',
+            agentName: this.agentName,
             transcriptionHistory: transcriptionHistoryStr,
             transcriptionLatest: transcriptionLatestStr,
             prompt,
             answer,
             answerJson,
         };
-        Events.get().sendInternal(responseEvent)
+        await Events.get().send(responseEvent)
         return responseEvent;
     }
 
