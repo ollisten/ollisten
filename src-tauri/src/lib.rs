@@ -58,7 +58,6 @@ pub fn run() {
         .manage(TranscriptionState {
             whisper_model: Arc::new(Mutex::new(None)),
             active_sessions: Arc::new(Mutex::new(HashMap::new())),
-            listeners: Arc::new(RwLock::new(HashMap::new())),
         })
         .manage(WatcherState {
             watcher: Arc::new(Mutex::new(None)),
@@ -83,8 +82,6 @@ pub fn run() {
             transcription::model::list_available_transcription_models,
             transcription::control::start_transcription,
             transcription::control::stop_transcription,
-            transcription::control::transcription_subscribe,
-            transcription::control::transcription_unsubscribe,
             config::agents::get_all_agent_configs,
             config::agents::save_agent_config,
             config::agents::delete_agent_config,

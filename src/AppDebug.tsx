@@ -84,7 +84,7 @@ export default function AppDebug() {
                 <Tab label='Transcription'>
                     <div>
                         {transcriptionEventsRef.current.map((event, index, arr) => (
-                            <Collapse in={arr.length - index <= MaxEntriesTranscription} appear key={event.received}>
+                            <Collapse in={arr.length - index <= MaxEntriesTranscription} appear key={`${event.received}`}>
                                 <div>
                                     <Typography variant="h6">
                                         {Transcription.get().deviceIdToSource(event.deviceId) === DeviceSource.Host ? 'Host' : 'Guest'}

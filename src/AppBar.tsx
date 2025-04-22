@@ -4,7 +4,7 @@ import {Alert, Collapse, IconButton} from "@mui/material";
 import {makeStyles} from "@mui/styles";
 import {Events} from "./system/events.ts";
 import {formatBytesToString} from "./util/unitConversion.ts";
-import {Settings} from "@mui/icons-material";
+import {Image, Settings} from "@mui/icons-material";
 import TranscriptionButton from "./TranscriptionButton.tsx";
 import PrompterButton from "./PrompterButton.tsx";
 import DebugButton from "./DebugButton.tsx";
@@ -81,6 +81,9 @@ export default function AppBar(props: {
     return (
         <div className={classes.root}>
             <div className={classes.topBar}>
+                <div>
+                    <img src="/ollisten-logo-circle.png" width={40} height={40} />
+                </div>
                 <TranscriptionButton popoverDirection={props.popoverDirection}/>
                 <Collapse in={props.isEditing} orientation='horizontal'>
                     <DebugButton/>

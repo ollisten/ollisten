@@ -176,17 +176,8 @@ export class Transcription {
             }
         });
 
-        // Subscribe to events from Rust
-        const channel = Events.get().createChannel();
-        await invoke('transcription_subscribe', {
-            sessionChannel: channel,
-            subscriberName: this.subscriberName,
-        });
-
         this.unsubscribe = () => {
             unsubscribeEventHandler();
-            channel.onmessage = () => {
-            };
         };
     }
 

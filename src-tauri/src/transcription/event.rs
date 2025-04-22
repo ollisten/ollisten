@@ -29,3 +29,21 @@ pub enum TranscriptionEvent {
     #[serde(rename_all = "camelCase")]
     TranscriptionStopped,
 }
+
+impl TranscriptionEvent {
+    pub fn variant_name(&self) -> &'static str {
+        match self {
+            TranscriptionEvent::TranscriptionStarting => "TranscriptionStarting",
+            TranscriptionEvent::TranscriptionDownloadProgress { .. } => {
+                "TranscriptionDownloadProgress"
+            }
+            TranscriptionEvent::TranscriptionLoadingProgress { .. } => {
+                "TranscriptionLoadingProgress"
+            }
+            TranscriptionEvent::TranscriptionStarted { .. } => "TranscriptionStarted",
+            TranscriptionEvent::TranscriptionData { .. } => "TranscriptionData",
+            TranscriptionEvent::TranscriptionError { .. } => "TranscriptionError",
+            TranscriptionEvent::TranscriptionStopped => "TranscriptionStopped",
+        }
+    }
+}

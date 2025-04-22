@@ -2,9 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod audio;
+mod lib;
 mod transcription;
 
 #[tokio::main]
 async fn main() {
-    ollisten_lib::run()
+    lib::run()
 }
