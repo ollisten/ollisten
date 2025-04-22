@@ -1,13 +1,10 @@
 use crate::config::agents::{parse_agent, parse_name_from_file_path, FileChangeEvent};
-use crate::util::paths::{get_app_path, get_app_sub_path};
+use crate::util::paths::get_app_sub_path;
 use log::{error, info};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Emitter, EventTarget, State};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
 
 pub struct WatcherState {
     pub watcher: Arc<Mutex<Option<notify::RecommendedWatcher>>>,

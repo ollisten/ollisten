@@ -2,15 +2,10 @@ use crate::llm::router::LlmRouterState;
 use crate::llm::types::LlmModel;
 use log::info;
 use ollama_rs::generation::completion::request::GenerationRequest;
-use ollama_rs::generation::parameters::{schema_for, FormatType, JsonStructure};
+use ollama_rs::generation::parameters::{FormatType, JsonStructure};
 use ollama_rs::Ollama;
-use schemars::{
-    gen::SchemaGenerator,
-    schema::{RootSchema, Schema},
-    JsonSchema,
-};
 use serde::{Deserialize, Serialize};
-use serde_json::{self, Value as JsonValue, Value};
+use serde_json::{self};
 use std::path::Path;
 use std::time::Duration;
 use tauri::State;

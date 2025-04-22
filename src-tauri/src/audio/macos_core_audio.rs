@@ -12,7 +12,7 @@ use coreaudio_sys::{
     AudioObjectGetPropertyDataSize, AudioObjectPropertyAddress, CFStringCreateWithCString,
 };
 use lazy_static::lazy_static;
-use log::{error, info};
+use log::info;
 use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_void;

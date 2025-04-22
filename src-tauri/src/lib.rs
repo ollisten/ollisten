@@ -10,7 +10,7 @@ use crate::llm::router::LlmRouterState;
 use crate::llm::types::LlmModel;
 use crate::transcription::control::TranscriptionState;
 use audio::devices::DeviceOption;
-use log::{error, info, LevelFilter};
+use log::{error, LevelFilter};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;

@@ -1,5 +1,4 @@
 use log::{error, info};
-use serde::{Deserialize, Serialize};
 use std::process::Command;
 use tauri::utils::platform::resource_dir;
 use tauri::Manager;

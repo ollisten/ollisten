@@ -7,9 +7,8 @@ use log::{error, info};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, State};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
 use tokio::task::AbortHandle;
 
 pub struct TranscriptionState {
