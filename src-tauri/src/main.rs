@@ -17,11 +17,12 @@ use log::{error, LevelFilter};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{App, AppHandle, Listener, Manager, WebviewWindow};
+use tauri::{App, AppHandle, Listener, Manager, RunEvent, WebviewWindow};
 use tokio::sync::{Mutex, RwLock};
 
 #[derive(Serialize)]
@@ -57,6 +58,7 @@ fn open_or_restore_main_window(app: &AppHandle) -> Result<WebviewWindow, String>
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[tokio::main]
 async fn main() {
+    let should_exit = Arc::new(AtomicBool::new(false));
     tauri::Builder::default()
         .manage(TranscriptionState {
             whisper_model: Arc::new(Mutex::new(None)),
@@ -97,19 +99,37 @@ async fn main() {
             setup_tray(app, is_dark_mode);
             Ok(())
         })
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "main" => {
-                open_or_restore_main_window(app);
-            }
-            "exit" => {
-                app.exit(0);
-            }
-            _ => {
-                println!("menu item {:?} not handled", event.id);
+        .on_menu_event({
+            let should_exit = should_exit.clone();
+            move |app, event| match event.id.as_ref() {
+                "main" => {
+                    open_or_restore_main_window(app);
+                }
+                "exit" => {
+                    should_exit.store(true, Ordering::SeqCst);
+                    app.exit(0);
+                }
+                _ => {
+                    println!("menu item {:?} not handled", event.id);
+                }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error starting Tauri application")
+        .run({
+            let should_exit = should_exit.clone();
+            move |_app_handle, event| match event {
+                RunEvent::ExitRequested { api, .. } => {
+                    #[cfg(target_os = "macos")]
+                    {
+                        if !should_exit.load(Ordering::SeqCst) {
+                            api.prevent_exit();
+                        }
+                    }
+                }
+                _ => {}
+            }
+        });
 }
 
 fn setup_tray(app: &App, is_dark_mode: bool) -> Result<(), String> {
