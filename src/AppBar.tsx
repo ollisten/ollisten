@@ -1,12 +1,11 @@
 import {ComponentProps, useEffect, useState} from "react";
 import {DownloadProgressEvent, ErrorEvent, LoadingProgressEvent, StatusChangeEvent} from "./system/transcription.ts";
-import {Alert, Collapse, IconButton} from "@mui/material";
+import {Alert, Collapse, IconButton, useColorScheme} from "@mui/material";
 import {makeStyles} from "@mui/styles";
 import {Events} from "./system/events.ts";
 import {formatBytesToString} from "./util/unitConversion.ts";
-import {Image, Settings} from "@mui/icons-material";
+import {Settings} from "@mui/icons-material";
 import TranscriptionButton from "./TranscriptionButton.tsx";
-import PrompterButton from "./PrompterButton.tsx";
 import DebugButton from "./DebugButton.tsx";
 
 const useStyles = makeStyles({
@@ -36,6 +35,8 @@ export default function AppBar(props: {
 
     const [messageAlertContent, setMessageAlertContent] = useState<AlertContent | null>(null);
     const [messageAlertShow, setMessageAlertShow] = useState<boolean>(false);
+    const {mode, systemMode} = useColorScheme();
+    const isDark = (mode === 'system' ? systemMode : mode) === 'dark';
 
     useEffect(() => {
         return Events.get().subscribe([
@@ -82,13 +83,13 @@ export default function AppBar(props: {
         <div className={classes.root}>
             <div className={classes.topBar}>
                 <div>
-                    <img src="/ollisten-logo-circle.png" width={40} height={40} />
+                    <img src={`/ollisten-logo-circle-${isDark ? 'white' : 'black'}.png`} width={40} height={40} />
                 </div>
-                <TranscriptionButton popoverDirection={props.popoverDirection}/>
+                <div className={classes.flexGrow}/>
                 <Collapse in={props.isEditing} orientation='horizontal'>
                     <DebugButton/>
                 </Collapse>
-                <div className={classes.flexGrow}/>
+                <TranscriptionButton popoverDirection={props.popoverDirection}/>
                 <IconButton onClick={props.onSettingsClick}>
                     <Settings/>
                 </IconButton>

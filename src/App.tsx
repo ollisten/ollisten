@@ -13,12 +13,14 @@ import {InstallStartOllamaNotice} from "./InstallStartOllamaNotice.tsx";
 import ModeList from "./ModeList.tsx";
 import Launcher from "./Launcher.tsx";
 
+const LauncherTabName = 'Start';
+
 export default function App() {
     const classes = useStyles();
 
     const {loading} = useAppConfig();
     const [isEditing, setIsEditing] = useState<boolean>(false);
-    const [activePage, setActivePage] = useState<string>('Launcher');
+    const [activePage, setActivePage] = useState<string>(LauncherTabName);
 
     if (loading) {
         return null;
@@ -31,7 +33,7 @@ export default function App() {
             <AppBar popoverDirection={isEditing ? 'right' : 'down'} isEditing={isEditing} onSettingsClick={() => {
                 if (isEditing) {
                     // If changed, change in tauri.conf.json
-                    setActivePage('Launcher');
+                    setActivePage(LauncherTabName);
                     setIsEditing(false);
                 } else {
                     setIsEditing(true);
@@ -42,24 +44,24 @@ export default function App() {
                 activePage={activePage}
                 onPageChange={setActivePage}
             >
-                <Tab label='Launcher'>
+                <Tab label={LauncherTabName}>
                     <InstallStartOllamaNotice/>
                     <InstallDriverNotice/>
                     <Launcher/>
                 </Tab>
-                <Tab label='Modes'>
+                <Tab label='Mode'>
                     <ModeList/>
                 </Tab>
-                <Tab label='Agents'>
+                <Tab label='Agent'>
                     <AgentList/>
                 </Tab>
-                <Tab label='Transcription'>
+                <Tab label='Audio'>
                     <InstallDriverNotice/>
                     <InputDeviceSelect/>
                     <OutputDeviceSelect/>
                     <TranscriptionModelSelect/>
                 </Tab>
-                <Tab label='LLM Model'>
+                <Tab label='Llm'>
                     <InstallStartOllamaNotice/>
                     <LlmModelSelect/>
                 </Tab>

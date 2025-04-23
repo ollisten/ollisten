@@ -1,13 +1,9 @@
 [package]
 name = "ollisten"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "AI Meeting Assistant"
+authors = ["Matus Faro"]
 edition = "2021"
-
-[lib]
-name = "ollisten_lib"
-crate-type = ["cdylib"]
 
 [build-dependencies]
 tauri-build = { version = "2.2.0", features = [] }
