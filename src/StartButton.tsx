@@ -47,6 +47,7 @@ function StartButton(props: {
     switch (Transcription.get().getStatus()) {
         case Status.Stopping:
         case Status.Stopped:
+        case Status.Unknown:
             buttonState = ButtonState.Start;
             break;
         case Status.ModelLoading:

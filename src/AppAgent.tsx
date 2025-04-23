@@ -1,19 +1,22 @@
 import {makeStyles} from "@mui/styles";
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {LlmResponseEvent, Prompter} from "./system/prompter.ts";
 import {Events} from "./system/events.ts";
 import {AppConfig, getAppConfig, setAppConfigDebounced, useAppConfig} from "./util/useAppConfig.ts";
 import {getCurrentWindow} from '@tauri-apps/api/window';
 import {Transcription} from "./system/transcription.ts";
-import {IconButton, Typography} from "@mui/material";
+import {Collapse, IconButton, Slider, Typography} from "@mui/material";
 import {UnlistenFn} from "@tauri-apps/api/event";
 import {AgentManager} from "./system/agentManager.ts";
 import TranscriptionButton from "./TranscriptionButton.tsx";
-import {Close} from "@mui/icons-material";
-import TimeAgo from "react-timeago";
+import {Close, Edit, History} from "@mui/icons-material";
 import PrompterButton from "./PrompterButton.tsx";
 import {LlmMessage} from "./LlmMessage.tsx";
-
+import PinOffIcon from "./icon/PinOffIcon.tsx";
+import PinIcon from "./icon/PinIcon.tsx";
+import {openAgentEdit} from "./agentEditWindow.ts";
+import clsx from "clsx";
+import {useForceRender} from "./util/useForceRender.ts";
 
 Transcription.get(); // Required to subscribe to transcription events
 
@@ -26,10 +29,13 @@ export default function AppAgent() {
     useEffect(() => {
         getCurrentWindow().isFocused().then(setIsWindowFocused);
     }, []);
-    const [answer, setAnswer] = useState<string | null>(null);
-    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const answersRef = useRef<string[]>([]);
+    const answerOffsetRef = useRef<number>(0);
+    const forceRender = useForceRender();
 
     const {loading} = useAppConfig();
+
+    const [taskbarPinned, setTaskbarPinned] = useState<boolean>(false);
 
     useEffect(() => {
         const getWindowProps = (c: AppConfig): NonNullable<AppConfig['windowProps']>[string] => {
@@ -75,8 +81,14 @@ export default function AppAgent() {
             }
             switch (event.type) {
                 case 'llm-response':
-                    setAnswer(event.answer);
-                    setLastUpdated(new Date());
+                    answersRef.current.unshift(event.answer)
+                    forceRender();
+                    while (answersRef.current.length > 30) {
+                        answersRef.current.pop();
+                    }
+                    if (answerOffsetRef.current > 0) {
+                        answerOffsetRef.current = Math.min(answerOffsetRef.current + 1, answersRef.current.length - 1);
+                    }
                     break;
                 default:
                     console.error(`Unexpected event: ${event}`);
@@ -96,21 +108,59 @@ export default function AppAgent() {
 
     return (
         <main className={classes.root} data-tauri-drag-region="">
-            <div className={classes.output} data-tauri-drag-region="">
-                <LlmMessage text={answer || ''}/>
+            <div>
+                <Collapse in={taskbarPinned || isWindowFocused}>
+                    <div className={clsx(classes.actionBar, classes.actionBarTop)} data-tauri-drag-region="">
+                        <IconButton onClick={() => getCurrentWindow().destroy()}>
+                            <Close/>
+                        </IconButton>
+                        <IconButton size='small' onClick={() => setTaskbarPinned(!taskbarPinned)}>
+                            {taskbarPinned ? <PinIcon/> : <PinOffIcon/>}
+                        </IconButton>
+                        <div data-tauri-drag-region="" className={classes.fill}/>
+                        <Typography data-tauri-drag-region="" variant='overline'>
+                            {agentConfig.name}
+                        </Typography>
+                        <div data-tauri-drag-region="" className={classes.fill}/>
+                        <TranscriptionButton popoverDirection='down'/>
+                        <PrompterButton agentName={agentConfig.name} popoverDirection='up'/>
+                        <IconButton onClick={() => openAgentEdit(agentConfig.name, agentConfig.agent)}>
+                            <Edit/>
+                        </IconButton>
+                    </div>
+                </Collapse>
             </div>
-            <div className={classes.actionBar} data-tauri-drag-region="">
-                <IconButton color='error' onClick={() => getCurrentWindow().destroy()}>
-                    <Close/>
-                </IconButton>
-                <TranscriptionButton popoverDirection='right'/>
-                <PrompterButton agentName={agentConfig.name} popoverDirection='right'/>
-                <div data-tauri-drag-region="" className={classes.fill}/>
-                <Typography variant='overline'>
-                    {agentConfig.name}
-                </Typography>
-                <div data-tauri-drag-region="" className={classes.fill}/>
-                {lastUpdated && <TimeAgo date={lastUpdated}/>}
+            <div className={classes.output} data-tauri-drag-region="">
+                <LlmMessage text={answersRef.current[answerOffsetRef.current] || ''}/>
+            </div>
+            <div>
+                <Collapse in={taskbarPinned || isWindowFocused}>
+                    <div className={clsx(classes.actionBar, classes.actionBarBottom)} data-tauri-drag-region="">
+                        <Slider
+                            className={classes.historySlider}
+                            color='primary'
+                            track={false}
+                            value={answersRef.current.length - answerOffsetRef.current}
+                            onChange={(_, value) => {
+                                answerOffsetRef.current = answersRef.current.length - (value as number);
+                                forceRender();
+                            }}
+                            valueLabelDisplay='auto'
+                            valueLabelFormat={(value, index) => {
+                                const historyAmount = answersRef.current.length - value;
+                                if(historyAmount === 0) {
+                                    return 'Current';
+                                }
+                                return `${historyAmount} answers ago`;
+                            }}
+                            step={1}
+                            marks
+                            min={0}
+                            max={answersRef.current.length}
+                        />
+                        <History />
+                    </div>
+                </Collapse>
             </div>
         </main>
     );
@@ -121,14 +171,13 @@ const useStyles = makeStyles({
         background: 'transparent',
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh',
-        minWidth: '100vw',
+        height: '100vh',
+        width: '100vw',
         padding: '1rem',
-        overflow: 'scroll',
         maxHeight: '30%',
     },
     output: {
-        overflowY: 'scroll',
+        overflow: 'scroll',
         flexGrow: 1,
     },
     actionBar: {
@@ -136,10 +185,16 @@ const useStyles = makeStyles({
         alignItems: 'center',
         flexShrink: 0,
     },
+    actionBarTop: {
+        marginBottom: '0.5rem',
+    },
+    actionBarBottom: {
+        marginTop: '0.5rem',
+    },
+    historySlider: {
+        margin: '0 2rem',
+    },
     fill: {
         flexGrow: 1,
-    },
-    hr: {
-        margin: '1rem 0',
     },
 });

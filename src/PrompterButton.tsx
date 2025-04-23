@@ -1,8 +1,12 @@
 import {ComponentProps, ReactNode, useEffect, useState} from "react";
 import {Button, IconButton, Popover, Typography} from "@mui/material";
 import {Events} from "./system/events.ts";
-import {VolumeMute, VolumeOff, VolumeUp} from "@mui/icons-material";
 import {LlmRequestEvent, LlmResponseEvent, Prompter, PrompterEvent, PrompterStatus} from "./system/prompter.ts";
+import EngineOffOutlineIcon from "./icon/EngineOffOutlineIcon.tsx";
+import EngineOutlineIcon from "./icon/EngineOutlineIcon.tsx";
+import EngineIcon from "./icon/EngineIcon.tsx";
+import TimeAgo from "react-timeago";
+import EngineOffIcon from "./icon/EngineOffIcon.tsx";
 
 export default function PrompterButton(props: {
     agentName: string;
@@ -11,6 +15,7 @@ export default function PrompterButton(props: {
 
     const [prompterStatus, setPrompterStatus] = useState<PrompterStatus>(Prompter.get().getStatus());
     const [llmWorking, setLlmWorking] = useState<boolean>(false);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     useEffect(() => {
         return Events.get().subscribe([
             'prompter-status-changed', "llm-request", "llm-response"
@@ -27,6 +32,7 @@ export default function PrompterButton(props: {
                     break;
                 case 'llm-response':
                     setLlmWorking(false);
+                    setLastUpdated(new Date());
                     break;
             }
         });
@@ -34,34 +40,39 @@ export default function PrompterButton(props: {
 
     let buttonDisabled: boolean = false;
     let buttonIcon: ReactNode = null;
-    let buttonPopoverText: string = '';
+    let buttonPopoverText: React.ReactNode = '';
     let buttonColor: ComponentProps<typeof Button>['color'] = undefined;
     switch (prompterStatus) {
         case PrompterStatus.Paused:
-            buttonIcon = <VolumeOff/>;
-            buttonPopoverText = 'Agent is paused. Press to resume.';
             buttonColor = 'inherit';
+            if (!llmWorking) {
+                buttonPopoverText = 'Agent is paused. Press to resume.';
+                buttonIcon = <EngineOffOutlineIcon/>;
+            } else {
+                buttonPopoverText = 'Agent is still processing an answer and will pause when finished. Press to resume.';
+                buttonIcon = <EngineOffIcon/>;
+            }
             break;
         case PrompterStatus.Running:
             buttonDisabled = false;
-            buttonIcon = <VolumeUp/>;
+            buttonColor = 'inherit';
             if (!llmWorking) {
                 buttonPopoverText = 'Agent is waiting for next input. Press to pause.';
-                buttonColor = 'success';
+                buttonIcon = <EngineOutlineIcon/>;
             } else {
                 buttonPopoverText = 'Agent is processing an answer. Press to pause.';
-                buttonColor = 'info';
+                buttonIcon = <EngineIcon/>;
             }
             break;
         case PrompterStatus.Stopped:
             buttonDisabled = true;
-            buttonIcon = <VolumeMute/>;
+            buttonIcon = <EngineOffOutlineIcon/>;
             buttonPopoverText = 'Agent is not running.';
             buttonColor = 'error';
             break;
         default:
             buttonDisabled = true;
-            buttonIcon = <VolumeMute/>;
+            buttonIcon = <EngineOffOutlineIcon/>;
             buttonPopoverText = 'Unknown Agent status';
             buttonColor = 'error';
             break;
@@ -135,7 +146,14 @@ export default function PrompterButton(props: {
                 anchorOrigin={anchorOrigin}
                 transformOrigin={transformOrigin}
             >
-                <Typography sx={{p: 1}}>{buttonPopoverText}</Typography>
+                <Typography sx={{p: 1}}>
+                    {buttonPopoverText}
+                    {!!lastUpdated && (
+                        <>
+                        <br/>Last update: {lastUpdated && <TimeAgo date={lastUpdated}/>}
+                        </>
+                    )}
+                </Typography>
             </Popover>
         </>
     );

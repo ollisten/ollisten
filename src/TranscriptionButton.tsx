@@ -10,7 +10,7 @@ import {
 } from "./system/transcription.ts";
 import {Button, IconButton, Popover, Typography} from "@mui/material";
 import {Events} from "./system/events.ts";
-import {Mic, MicNone, MicOff, VolumeDown, VolumeMute, VolumeOff, VolumeUp} from "@mui/icons-material";
+import {Mic, MicNone, MicOff} from "@mui/icons-material";
 
 export default function TranscriptionButton(props: {
     popoverDirection?: 'right' | 'up' | 'down';
@@ -60,7 +60,7 @@ export default function TranscriptionButton(props: {
             buttonDisabled = false;
             buttonIcon = <Mic/>;
             buttonPopoverText = 'Listening, press to stop.';
-            buttonColor = 'success';
+            buttonColor = 'inherit';
             break;
         case Status.Stopping:
             buttonDisabled = true;
@@ -82,6 +82,7 @@ export default function TranscriptionButton(props: {
                 buttonColor = 'error';
             }
             break;
+        case Status.Unknown:
         default:
             buttonDisabled = true;
             buttonIcon = <MicNone/>;

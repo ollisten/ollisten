@@ -6,5 +6,6 @@ export function LlmMessage(props: {
 }) {
     return (
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{props.text}</ReactMarkdown>
+
     );
 }

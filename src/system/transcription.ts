@@ -19,7 +19,8 @@ export enum Status {
     ModelLoading,
     TranscriptionStarted,
     Stopping,
-    Stopped
+    Stopped,
+    Unknown,
 }
 
 export type Listener = (event: Event) => void;
@@ -128,7 +129,7 @@ export class Transcription {
      * State management
      */
 
-    private status: Status = Status.Stopped;
+    private status: Status = Status.Unknown;
 
     public getStatus(): Status {
         return this.status;
@@ -146,9 +147,9 @@ export class Transcription {
 
         // Setup event handler
         const unsubscribeEventHandler = Events.get().subscribe([
-            'TranscriptionDownloadProgress', 'TranscriptionLoadingProgress', 'TranscriptionStarted', 'TranscriptionError', 'TranscriptionStopped'
+            'TranscriptionDownloadProgress', 'TranscriptionLoadingProgress', 'TranscriptionStarted', 'TranscriptionData', 'TranscriptionError', 'TranscriptionStopped'
         ], (
-            event: DownloadProgressEvent | LoadingProgressEvent | TranscriptionStartedEvent | ErrorEvent | StoppedEvent
+            event: DownloadProgressEvent | LoadingProgressEvent | TranscriptionDataEvent | TranscriptionStartedEvent | ErrorEvent | StoppedEvent
         ) => {
             switch (event.type) {
                 case "TranscriptionDownloadProgress":
@@ -162,6 +163,7 @@ export class Transcription {
                     }
                     break;
                 case "TranscriptionStarted":
+                case "TranscriptionData":
                     this.setStatus(Status.TranscriptionStarted);
                     break;
                 case "TranscriptionStopped":
@@ -237,6 +239,7 @@ export class Transcription {
         switch (this.getStatus()) {
             case Status.Stopping:
             case Status.Stopped:
+            case Status.Unknown:
                 return false;
             default:
                 return true;
