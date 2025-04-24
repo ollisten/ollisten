@@ -1,6 +1,7 @@
 import {makeStyles} from "@mui/styles";
 import {
-    Button,
+    Box,
+    Button, IconButton,
     Paper,
     Table,
     TableBody,
@@ -12,6 +13,8 @@ import {
 } from "@mui/material";
 import AgentSelect from "./AgentSelect.tsx";
 import useModes from "./useModes.ts";
+import {createAgent} from "./agentEditWindow.ts";
+import {Add} from "@mui/icons-material";
 
 const useStyles = makeStyles({
     createButton: {
@@ -65,16 +68,19 @@ export default function ModeList() {
                                     </TableCell>
                                 </TableRow>
                             ))}
+                            <TableRow key='create'>
+                                <TableCell component="th" scope="row" colSpan={3}>
+                                    <Box display='flex' alignItems='center' justifyContent='center'>
+                                        <IconButton onClick={createMode}>
+                                            <Add/>
+                                        </IconButton>
+                                    </Box>
+                                </TableCell>
+                            </TableRow>
                         </TableBody>
                     </Table>
                 </TableContainer>
             )}
-            <Button
-                className={classes.createButton}
-                onClick={() => createMode()}
-            >
-                Create new mode
-            </Button>
         </div>
     );
 }

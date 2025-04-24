@@ -197,6 +197,7 @@ export class Transcription {
         switch (this.status) {
             case Status.Stopping:
             case Status.Stopped:
+            case Status.Unknown:
                 return;
         }
 

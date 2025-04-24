@@ -5,6 +5,7 @@ import {randomTimeUuid} from "./util/idUtil.ts";
 import {Transcription} from "./system/transcription.ts";
 import {AgentManager, AgentWindowEvent} from "./system/agentManager.ts";
 import {Events} from "./system/events.ts";
+import {useForceRender} from "./util/useForceRender.ts";
 
 export type CreateMode = () => void;
 export type RenameMode = (modeId: string, newModeLabel: string) => void;
@@ -12,10 +13,13 @@ export type DeleteMode = (modeId: string) => void;
 export type SetModeAgents = (modeId: string, agentNames: string[]) => void;
 
 export default function useModes(): {
+    runningAgents: Set<string>;
     runningModeId: string | null;
     startAll: () => void;
+    startAgent: (agentName: string) => void;
     startMode: (modeId: string) => void;
     stop: () => void;
+    stopAgent: (agentName: string) => void;
     modes: NonNullable<AppConfig['modes']>;
     getAgentByName: (name: string) => AgentsMap[string];
     createMode: CreateMode;
@@ -27,6 +31,8 @@ export default function useModes(): {
     const agentByName = useAgents();
     const {appConfig, setAppConfig} = useAppConfig();
 
+    const forceRender = useForceRender();
+    const runningAgents = new Set(AgentManager.get().getRunningAgentNames());
     const [runningModeId, setRunningModeId] = useState<string | null>(() => {
         // Infer which mode is running
         const runningAgentNames = new Set(AgentManager.get().getRunningAgentNames());
@@ -99,10 +105,19 @@ export default function useModes(): {
         AgentManager.get().managerStart(agentNamesToStart);
     }, []);
 
+    const startAgent = useCallback((agentName: string) => {
+        Transcription.get().startTranscription();
+        AgentManager.get().managerStart([agentName]);
+    }, []);
+
     const stop = useCallback(() => {
         setRunningModeId(null);
         Transcription.get().stopTranscription();
         AgentManager.get().managerStop();
+    }, []);
+
+    const stopAgent = useCallback((agentName: string) => {
+        AgentManager.get().stopAgent(agentName);
     }, []);
 
     useEffect(() => {
@@ -114,6 +129,7 @@ export default function useModes(): {
                         // mark any mode as not running
                         setRunningModeId(null);
                     }
+                    forceRender(); // refresh runningAgents
                     break;
             }
         });
@@ -122,9 +138,12 @@ export default function useModes(): {
     return {
         modes: appConfig.modes || {},
         runningModeId,
+        runningAgents,
+        startAgent,
         startAll,
         startMode,
         stop,
+        stopAgent,
         createMode,
         renameMode,
         deleteMode,

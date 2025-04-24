@@ -66,22 +66,24 @@ export class AgentManager {
             this.startAgent(agentConfig);
         })
 
-        this.monitorUnlisten = Events.get().subscribe([
-            'file-agent-created', 'file-agent-deleted',
-        ], (event: FileChangeEvent) => {
-            switch (event.type) {
-                case 'file-agent-created':
-                    this.startAgent(event);
-                    break;
-                case 'file-agent-deleted':
-                    const webview = this.agentWindows[event.name];
-                    if (webview) {
-                        webview.close();
-                        delete this.agentWindows[event.name];
-                    }
-                    break;
-            }
-        });
+        if (!this.monitorUnlisten) {
+            this.monitorUnlisten = Events.get().subscribe([
+                'file-agent-created', 'file-agent-deleted',
+            ], (event: FileChangeEvent) => {
+                switch (event.type) {
+                    case 'file-agent-created':
+                        this.startAgent(event);
+                        break;
+                    case 'file-agent-deleted':
+                        const webview = this.agentWindows[event.name];
+                        if (webview) {
+                            webview.close();
+                            delete this.agentWindows[event.name];
+                        }
+                        break;
+                }
+            });
+        }
     }
 
     private async startAgent(agentConfig: AgentConfig) {
@@ -131,6 +133,24 @@ export class AgentManager {
             await Events.get().send({type: 'agent-window-closed'} as AgentWindowEvent)
             console.log('Window closed');
         });
+    }
+
+    public stopAgent(agentName: string) {
+        const agentWindow = this.agentWindows[agentName]
+
+        if (!agentWindow) {
+            return;
+        }
+
+        agentWindow.close();
+        delete this.agentWindows[agentName];
+
+        if(Object.keys(this.agentWindows).length > 0) {
+            return;
+        }
+
+        this.monitorUnlisten?.();
+        this.monitorUnlisten = null;
     }
 
     public managerStop() {

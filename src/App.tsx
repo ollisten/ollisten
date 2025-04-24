@@ -12,14 +12,23 @@ import {useAppConfig} from "./util/useAppConfig.ts";
 import {InstallStartOllamaNotice} from "./InstallStartOllamaNotice.tsx";
 import ModeList from "./ModeList.tsx";
 import Launcher from "./Launcher.tsx";
+import {Person, PlayArrow, Speaker, SwitchAccount} from "@mui/icons-material";
+import EngineIcon from "./icon/EngineIcon.tsx";
 
-const LauncherTabName = 'Start';
+const LauncherTabName = 'Launch';
+
+const useStyles = makeStyles({
+    root: {
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+    },
+});
 
 export default function App() {
     const classes = useStyles();
 
     const {loading} = useAppConfig();
-    const [isEditing, setIsEditing] = useState<boolean>(false);
     const [activePage, setActivePage] = useState<string>(LauncherTabName);
 
     if (loading) {
@@ -30,38 +39,30 @@ export default function App() {
         <main
             className={classes.root}
         >
-            <AppBar popoverDirection={isEditing ? 'right' : 'down'} isEditing={isEditing} onSettingsClick={() => {
-                if (isEditing) {
-                    // If changed, change in tauri.conf.json
-                    setActivePage(LauncherTabName);
-                    setIsEditing(false);
-                } else {
-                    setIsEditing(true);
-                }
-            }}/>
+            <AppBar />
             <Menu
-                hideTabSelection={!isEditing}
+                type='bottom-navigation'
                 activePage={activePage}
                 onPageChange={setActivePage}
             >
-                <Tab label={LauncherTabName}>
+                <Tab label={LauncherTabName} icon={<PlayArrow/>}>
                     <InstallStartOllamaNotice/>
                     <InstallDriverNotice/>
                     <Launcher/>
                 </Tab>
-                <Tab label='Mode'>
+                <Tab label='Mode' icon={<SwitchAccount/>}>
                     <ModeList/>
                 </Tab>
-                <Tab label='Agent'>
+                <Tab label='Agent' icon={<Person/>}>
                     <AgentList/>
                 </Tab>
-                <Tab label='Audio'>
+                <Tab label='Audio' icon={<Speaker/>}>
                     <InstallDriverNotice/>
                     <InputDeviceSelect/>
                     <OutputDeviceSelect/>
                     <TranscriptionModelSelect/>
                 </Tab>
-                <Tab label='Llm'>
+                <Tab label='Llm' icon={<EngineIcon/>}>
                     <InstallStartOllamaNotice/>
                     <LlmModelSelect/>
                 </Tab>
@@ -69,11 +70,3 @@ export default function App() {
         </main>
     );
 }
-
-const useStyles = makeStyles({
-    root: {
-        display: 'flex',
-        flexDirection: 'column',
-        margin: '1rem',
-    },
-});

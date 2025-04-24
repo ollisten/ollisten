@@ -38,7 +38,6 @@ export default function PrompterButton(props: {
         });
     }, []);
 
-    let buttonDisabled: boolean = false;
     let buttonIcon: ReactNode = null;
     let buttonPopoverText: React.ReactNode = '';
     let buttonColor: ComponentProps<typeof Button>['color'] = undefined;
@@ -54,7 +53,6 @@ export default function PrompterButton(props: {
             }
             break;
         case PrompterStatus.Running:
-            buttonDisabled = false;
             buttonColor = 'inherit';
             if (!llmWorking) {
                 buttonPopoverText = 'Agent is waiting for next input. Press to pause.';
@@ -65,13 +63,11 @@ export default function PrompterButton(props: {
             }
             break;
         case PrompterStatus.Stopped:
-            buttonDisabled = true;
             buttonIcon = <EngineOffOutlineIcon/>;
             buttonPopoverText = 'Agent is not running.';
             buttonColor = 'error';
             break;
         default:
-            buttonDisabled = true;
             buttonIcon = <EngineOffOutlineIcon/>;
             buttonPopoverText = 'Unknown Agent status';
             buttonColor = 'error';
@@ -123,9 +119,6 @@ export default function PrompterButton(props: {
                 color={buttonColor}
                 onClick={async e => {
                     e.preventDefault();
-                    if (buttonDisabled) {
-                        return
-                    }
                     switch (prompterStatus) {
                         case PrompterStatus.Running:
                             Prompter.get().pause();

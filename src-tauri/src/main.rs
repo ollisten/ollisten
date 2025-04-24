@@ -13,7 +13,7 @@ use crate::config::watcher::WatcherState;
 use crate::llm::router::LlmRouterState;
 use crate::llm::types::LlmModel;
 use crate::transcription::control::TranscriptionState;
-use log::{error, LevelFilter};
+use log::{error, info, LevelFilter};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -22,7 +22,7 @@ use std::sync::Arc;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{App, AppHandle, Listener, Manager, RunEvent, WebviewWindow};
+use tauri::{async_runtime, App, AppHandle, Listener, Manager, RunEvent, WebviewWindow};
 use tokio::sync::{Mutex, RwLock};
 
 #[derive(Serialize)]
@@ -123,7 +123,14 @@ async fn main() {
                     #[cfg(target_os = "macos")]
                     {
                         if !should_exit.load(Ordering::SeqCst) {
+                            info!("Preventing exit on macOS, instead releasing resources");
                             api.prevent_exit();
+                            let _app_handle = _app_handle.clone();
+                            async_runtime::spawn(async move {
+                                if let Err(e) = release_all_resources(_app_handle.clone()).await {
+                                    error!("Failed to release resources: {}", e);
+                                }
+                            });
                         }
                     }
                 }
@@ -186,4 +193,9 @@ fn update_tray_icon(app: &AppHandle, is_dark_mode: bool) -> Result<(), String> {
         .map_err(|e| format!("Failed to set tray icon: {}", e))?;
 
     Ok(())
+}
+
+async fn release_all_resources(app: AppHandle) -> Result<(), String> {
+    // Stop transcription
+    transcription::control::stop_transcription(app.clone(), app.state::<TranscriptionState>()).await
 }

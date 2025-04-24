@@ -137,10 +137,8 @@ export default function TranscriptionButton(props: {
                 color={buttonColor}
                 onClick={async e => {
                     e.preventDefault();
-                    if (buttonDisabled) {
-                        return
-                    }
                     switch (Transcription.get().getStatus()) {
+                        case Status.Unknown:
                         case Status.Stopped:
                             if (!Transcription.get().canStart().valid) {
                                 return

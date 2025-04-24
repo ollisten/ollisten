@@ -111,7 +111,7 @@ export default function AppAgent() {
             <div>
                 <Collapse in={taskbarPinned || isWindowFocused}>
                     <div className={clsx(classes.actionBar, classes.actionBarTop)} data-tauri-drag-region="">
-                        <IconButton onClick={() => getCurrentWindow().destroy()}>
+                        <IconButton onClick={() => getCurrentWindow().close()}>
                             <Close/>
                         </IconButton>
                         <IconButton size='small' onClick={() => setTaskbarPinned(!taskbarPinned)}>
@@ -123,7 +123,7 @@ export default function AppAgent() {
                         </Typography>
                         <div data-tauri-drag-region="" className={classes.fill}/>
                         <TranscriptionButton popoverDirection='down'/>
-                        <PrompterButton agentName={agentConfig.name} popoverDirection='up'/>
+                        <PrompterButton agentName={agentConfig.name} popoverDirection='down'/>
                         <IconButton onClick={() => openAgentEdit(agentConfig.name, agentConfig.agent)}>
                             <Edit/>
                         </IconButton>
@@ -146,9 +146,9 @@ export default function AppAgent() {
                                 forceRender();
                             }}
                             valueLabelDisplay='auto'
-                            valueLabelFormat={(value, index) => {
+                            valueLabelFormat={value => {
                                 const historyAmount = answersRef.current.length - value;
-                                if(historyAmount === 0) {
+                                if (historyAmount === 0) {
                                     return 'Current';
                                 }
                                 return `${historyAmount} answers ago`;
@@ -158,7 +158,7 @@ export default function AppAgent() {
                             min={0}
                             max={answersRef.current.length}
                         />
-                        <History />
+                        <History/>
                     </div>
                 </Collapse>
             </div>
