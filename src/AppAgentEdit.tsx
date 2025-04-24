@@ -408,7 +408,6 @@ const useStyles = makeStyles({
         height: '100vh',
         display: 'flex',
         flexDirection: 'row',
-        // flexWrap: 'wrap',
     },
     section: {
         margin: '1rem',

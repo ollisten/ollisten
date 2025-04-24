@@ -1,6 +1,7 @@
 import {makeStyles} from "@mui/styles";
 import useModes from "./useModes.ts";
 import {Chip, Grid2, Theme, Typography} from "@mui/material";
+import Note from "./Note.tsx";
 
 const useStyles = makeStyles((theme: Theme) => ({
     root: {
@@ -71,8 +72,7 @@ function LauncherGroup(props: {
     const classes = useStyles();
     return (
         <>
-            <Typography className={classes.groupLabel}
-                        variant='h5'>{props.type === 'mode' ? 'Modes' : 'Agents'}</Typography>
+            <Note title={props.type === 'mode' ? 'Modes' : 'Agents'} />
             <Grid2 className={classes.root} container spacing={3} columns={{xs: 3, sm: 4, md: 5}}>
                 {props.children}
             </Grid2>

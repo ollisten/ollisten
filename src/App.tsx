@@ -12,8 +12,9 @@ import {useAppConfig} from "./util/useAppConfig.ts";
 import {InstallStartOllamaNotice} from "./InstallStartOllamaNotice.tsx";
 import ModeList from "./ModeList.tsx";
 import Launcher from "./Launcher.tsx";
-import {Person, PlayArrow, Speaker, SwitchAccount} from "@mui/icons-material";
+import {HelpCenter, Info, InfoOutlined, Person, PlayArrow, Speaker, SwitchAccount} from "@mui/icons-material";
 import EngineIcon from "./icon/EngineIcon.tsx";
+import Note from "./Note.tsx";
 
 const LauncherTabName = 'Launch';
 
@@ -51,20 +52,36 @@ export default function App() {
                     <Launcher/>
                 </Tab>
                 <Tab label='Mode' icon={<SwitchAccount/>}>
+                    <Note title='Modes' description='A mode launches a set of Agents' />
                     <ModeList/>
                 </Tab>
                 <Tab label='Agent' icon={<Person/>}>
+                    <Note title='Agents' description='An agent serves a single purpose and displays its output in its own window' />
                     <AgentList/>
                 </Tab>
                 <Tab label='Audio' icon={<Speaker/>}>
                     <InstallDriverNotice/>
+                    <Note title='Audio setup' description='Choose which microphone or audio input to listen for.' />
                     <InputDeviceSelect/>
+                    <Note description='Choose which audio output to listen for, due to system constraints, only the virtual device is available.' />
                     <OutputDeviceSelect/>
+                    <Note description='Choose a Transcription model to convert audio into text.' />
                     <TranscriptionModelSelect/>
                 </Tab>
                 <Tab label='Llm' icon={<EngineIcon/>}>
                     <InstallStartOllamaNotice/>
+                    <Note title='LLM setup' description='Choose which LLM Model to use for all Agents.' />
                     <LlmModelSelect/>
+                </Tab>
+                <Tab label='About' icon={<HelpCenter/>}>
+                    <Note title='About' description='Ollisten is an AI Meeting Assistant where you can define your own Agent.' />
+                    <Note description={(
+                        <>
+                            Visit&nbsp;
+                            <a href='https://ollisten.com' target='_blank'>https://ollisten.com</a>
+                            &nbsp;to get help.
+                        </>
+                    )} />
                 </Tab>
             </Menu>
         </main>

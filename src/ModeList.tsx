@@ -1,7 +1,7 @@
-import {makeStyles} from "@mui/styles";
 import {
     Box,
-    Button, IconButton,
+    Button,
+    IconButton,
     Paper,
     Table,
     TableBody,
@@ -13,17 +13,9 @@ import {
 } from "@mui/material";
 import AgentSelect from "./AgentSelect.tsx";
 import useModes from "./useModes.ts";
-import {createAgent} from "./agentEditWindow.ts";
 import {Add} from "@mui/icons-material";
 
-const useStyles = makeStyles({
-    createButton: {
-        margin: '1rem',
-    },
-});
-
 export default function ModeList() {
-    const classes = useStyles();
     const {modes, renameMode, setModeAgents, deleteMode, createMode, agentNames} = useModes();
 
     return (
