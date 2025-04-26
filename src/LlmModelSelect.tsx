@@ -2,17 +2,9 @@ import {useCallback, useEffect, useState} from "react";
 import Select, {Option} from "./Select.tsx";
 import {Llm, LlmModel, LlmModelOptionSelectedEvent, LlmModelOptionsUpdatedEvent} from "./system/llm.ts";
 import {Events} from "./system/events.ts";
-import {makeStyles} from "@mui/styles";
-
-const useStyles = makeStyles({
-    root: {
-        margin: '1rem',
-    },
-});
 
 export default function LlmModelSelect() {
 
-    const classes = useStyles();
     const [options, setOptions] = useState<Option[]>(() => Llm.get()
         .getLlmModelOptions()
         .map(mapModelToOption));
@@ -39,7 +31,9 @@ export default function LlmModelSelect() {
 
     return (
         <Select
-            className={classes.root}
+            sx={{
+                margin: '1rem',
+            }}
             label='LLM Model'
             value={modelName}
             options={options}

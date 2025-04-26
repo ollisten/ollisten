@@ -6,7 +6,7 @@ export default function DebugButton() {
     return (
         <>
             <IconButton
-                color='warning'
+                color='inherit'
                 onClick={e => {
                     e.preventDefault();
                     new WebviewWindow('debug', {

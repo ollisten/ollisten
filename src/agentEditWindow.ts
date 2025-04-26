@@ -1,6 +1,7 @@
 import {Agent, AgentConfig} from "./system/agentManager.ts";
 import {WebviewWindow} from "@tauri-apps/api/webviewWindow";
 import {randomUuid} from "./util/idUtil.ts";
+import {Events} from "./system/events.ts";
 
 export const openAgentEdit = (name: string, agent: Agent) => {
     const windowLabel = `agentEdit-${randomUuid()}`;
@@ -19,7 +20,7 @@ export const openAgentEdit = (name: string, agent: Agent) => {
         console.log(`Window successfully created for agent edit ${agentConfig.name}`);
     });
     webview.once('tauri://error', (e) => {
-        console.error('Error creating window:', e);
+        Events.get().showError(`Failed to create new window: ${e}`);
     });
     webview.once('tauri://closed', () => {
         console.log('Window closed');

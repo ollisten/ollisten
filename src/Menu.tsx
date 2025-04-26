@@ -1,42 +1,19 @@
-import {BottomNavigation, BottomNavigationAction, Collapse, Tab as MuiTab, Tabs, useColorScheme} from "@mui/material";
-import {makeStyles} from "@mui/styles";
+import {
+    BottomNavigation,
+    BottomNavigationAction,
+    Box,
+    Collapse,
+    Tab as MuiTab,
+    Tabs,
+    useColorScheme
+} from "@mui/material";
 import React, {createContext, ReactNode, useContext, useState} from "react";
-import clsx from "clsx";
 
 // Create context for sharing active tab state
 const MenuContext = createContext<{
     activePage: string;
 }>({
     activePage: '',
-});
-
-const useStyles = makeStyles({
-    rootWithBottomNavigation: {
-        display: "flex",
-        flexDirection: "column",
-        flex: '1 1 0',
-    },
-    children: {
-        display: 'flex',
-        flexDirection: 'column',
-        marginTop: '1rem',
-        flexGrow: 1,
-    },
-    scrollable: {
-        overflow: 'auto',
-        flex: '1 1 0',
-    },
-    bottomNavigationContainer: {
-        flex: '0 0 auto',
-        display: 'flex',
-        width: '100%',
-        alignItems: 'center',
-    },
-    logo: {
-        margin: '2rem',
-    },
-    bottomNavigation: {
-    },
 });
 
 export type TabItem = {
@@ -109,32 +86,46 @@ export default function Menu(props: {
         }
     };
 
-    const classes = useStyles();
-
     return (
         <MenuContext.Provider value={{activePage}}>
-            <div className={clsx(type === 'bottom-navigation' && classes.rootWithBottomNavigation)}>
+            <Box sx={{
+                ...(type === 'bottom-navigation' ? {
+                    display: "flex",
+                    flexDirection: "column",
+                    flex: '1 1 0',
+                } : {})
+            }}>
                 {type === 'tabs' && (
                     <Collapse in={!hideTabSelection}>
-                    <Tabs
-                        value={activePage}
-                        onChange={(_, newLabel) => handleTabChange(newLabel)}
-                        variant='fullWidth'
-                    >
-                        {tabItems.map(page => (
-                            <MuiTab key={page.label} label={page.label} value={page.label}/>
-                        ))}
-                    </Tabs>
+                        <Tabs
+                            value={activePage}
+                            onChange={(_, newLabel) => handleTabChange(newLabel)}
+                            variant='fullWidth'
+                        >
+                            {tabItems.map(page => (
+                                <MuiTab key={page.label} label={page.label} value={page.label}/>
+                            ))}
+                        </Tabs>
                     </Collapse>
                 )}
 
                 {type === 'bottom-navigation' && (
-                    <div className={classes.bottomNavigationContainer}>
-                        <img className={classes.logo} src={`/ollisten-logo-circle-${isDark ? 'white' : 'black'}.png`}
-                             width={40}
-                             height={40}/>
+                    <Box sx={{
+                        flex: '0 0 auto',
+                        display: 'flex',
+                        width: '100%',
+                        alignItems: 'center',
+                    }}>
+                        <Box sx={{
+                            margin: '2rem',
+                        }}>
+                            <img
+                                src={`/ollisten-logo-circle-${isDark ? 'white' : 'black'}.png`}
+                                width={50}
+                                height={50}
+                            />
+                        </Box>
                         <BottomNavigation
-                            className={classes.bottomNavigation}
                             showLabels={false}
                             value={activePage}
                             onChange={(_, newValue) => handleTabChange(newValue)}
@@ -144,14 +135,23 @@ export default function Menu(props: {
                                                         icon={page.icon}/>
                             ))}
                         </BottomNavigation>
-                    </div>
+                    </Box>
                 )}
 
-                <div className={clsx(classes.children, type === 'bottom-navigation' && classes.scrollable)}>
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    marginTop: '1rem',
+                    flexGrow: 1,
+                    ...(type === 'bottom-navigation' ? {
+                        overflow: 'auto',
+                        flex: '1 1 0',
+                    } : {})
+                }}>
                     {children}
-                </div>
+                </Box>
 
-            </div>
+            </Box>
         </MenuContext.Provider>
     );
 }

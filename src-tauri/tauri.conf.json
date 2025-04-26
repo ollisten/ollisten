@@ -18,8 +18,12 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": {
+      "resources/icons/ollisten-logo-circle-black.png": "resources/icons/ollisten-logo-circle-black.png",
+      "resources/icons/ollisten-logo-circle-white.png": "resources/icons/ollisten-logo-circle-white.png"
+    },
     "icon": [
-      "icons/ollisten-logo-circle.png"
+      "resources/icons/ollisten-logo-circle.png"
     ]
   }
 }

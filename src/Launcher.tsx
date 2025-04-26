@@ -1,23 +1,6 @@
-import {makeStyles} from "@mui/styles";
 import useModes from "./useModes.ts";
-import {Chip, Grid2, Theme, Typography} from "@mui/material";
+import {Chip, Grid2} from "@mui/material";
 import Note from "./Note.tsx";
-
-const useStyles = makeStyles((theme: Theme) => ({
-    root: {
-        margin: theme.spacing(3),
-    },
-    groupLabel: {
-        marginLeft: theme.spacing(5),
-    },
-    buttonContainer: {
-        display: "flex",
-    },
-    button: {
-        flex: '1 1 auto',
-        padding: '2rem 1rem',
-    },
-}));
 
 export default function Launcher() {
     const {modes, startMode, stop, runningModeId, agentNames, runningAgents, startAgent, stopAgent} = useModes();
@@ -69,11 +52,12 @@ function LauncherGroup(props: {
     type: 'mode' | 'agent';
     children: React.ReactNode;
 }) {
-    const classes = useStyles();
     return (
         <>
-            <Note title={props.type === 'mode' ? 'Modes' : 'Agents'} />
-            <Grid2 className={classes.root} container spacing={3} columns={{xs: 3, sm: 4, md: 5}}>
+            <Note title={props.type === 'mode' ? 'Modes' : 'Agents'}/>
+            <Grid2 sx={theme => ({
+                margin: theme.spacing(3),
+            })} container spacing={3} columns={{xs: 3, sm: 4, md: 5}}>
                 {props.children}
             </Grid2>
         </>
@@ -86,11 +70,15 @@ function LauncherMode(props: {
     onClick: () => void;
     running: boolean;
 }) {
-    const classes = useStyles();
     return (
-        <Grid2 className={classes.buttonContainer} size={1}>
+        <Grid2 sx={{
+            display: "flex",
+        }} size={1}>
             <Chip
-                className={classes.button}
+                sx={{
+                    flex: '1 1 auto',
+                    padding: '2rem 1rem',
+                }}
                 color={props.running ? 'primary' : 'default'}
                 onClick={props.onClick}
                 label={props.label}

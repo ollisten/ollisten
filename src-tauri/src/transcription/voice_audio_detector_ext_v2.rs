@@ -27,38 +27,6 @@ pub struct VoiceActivityRechunkerStreamV2<S> {
 }
 
 impl<S> VoiceActivityRechunkerStreamV2<S> {
-    /// Set the threshold for the start of a voice activity run
-    pub fn with_start_threshold(mut self, start_threshold: f32) -> Self {
-        self.start_threshold = start_threshold;
-        self
-    }
-
-    /// Set the window for the start of a voice activity run
-    pub fn with_start_window(mut self, start_window: Duration) -> Self {
-        self.start_window = start_window;
-        self
-    }
-
-    /// Set the threshold for the end of a voice activity run
-    pub fn with_end_threshold(mut self, end_threshold: f32) -> Self {
-        self.end_threshold = end_threshold;
-        self
-    }
-
-    /// Set the window for the end of a voice activity run
-    pub fn with_end_window(mut self, end_window: Duration) -> Self {
-        self.end_window = end_window;
-        self
-    }
-
-    /// Set the time before the speech run starts to include in the output
-    pub fn with_time_before_speech(mut self, time_before_speech: Duration) -> Self {
-        self.include_duration_before = time_before_speech;
-        self
-    }
-}
-
-impl<S> VoiceActivityRechunkerStreamV2<S> {
     pub fn new(
         source: S,
         start_threshold: f32,

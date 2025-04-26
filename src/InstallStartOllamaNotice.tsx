@@ -1,7 +1,6 @@
 import {useEffect, useState} from "react";
 import {Alert, Collapse} from "@mui/material";
 import {Events} from "./system/events.ts";
-import {makeStyles} from "@mui/styles";
 import {
     LlmModelOptionsUpdatedEvent,
     OllamaIsStoppedEvent,
@@ -11,16 +10,8 @@ import {
 import {RetryOllamaButton} from "./RetryOllamaButton.tsx";
 import {InstallOllamaButton} from "./InstallOllamaButton.tsx";
 
-const useStyles = makeStyles({
-    alert: {
-        margin: '1rem',
-        marginTop: 0,
-    },
-});
-
 export function InstallStartOllamaNotice() {
 
-    const classes = useStyles();
     const [state, setState] = useState<'Modelless' | 'Stopped' | 'Missing' | null>(null);
 
     useEffect(() => {
@@ -67,7 +58,10 @@ export function InstallStartOllamaNotice() {
             <Alert
                 variant='outlined'
                 severity='warning'
-                className={classes.alert}
+                sx={{
+                    margin: '1rem',
+                    marginTop: 0,
+                }}
                 action={
                     <>
                         <RetryOllamaButton/>

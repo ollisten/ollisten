@@ -5,7 +5,8 @@
       "resources/Ollisten.pkg": "resources/Ollisten.pkg"
     },
     "macOS": {
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": "0CEADF06B5B70F3757D7465E0C35C9C3C18B0368"
     }
   }
 }

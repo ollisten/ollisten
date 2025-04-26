@@ -43,7 +43,7 @@ let appConfig: AppConfig = {};
     try {
         appConfig = JSON.parse(await invoke<string>('read_app_config'));
     } catch (e) {
-        console.error("Failed to read app config", e);
+        Events.get().showError(`Failed to read app config: ${e}`);
     }
     if (typeof appConfig !== 'object') {
         appConfig = {};

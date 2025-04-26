@@ -1,5 +1,6 @@
 import {Button} from "@mui/material";
 import {invoke} from "@tauri-apps/api/core";
+import {Events} from "./system/events.ts";
 
 const installDriver = async () => {
     return await invoke<void>('install_driver');
@@ -20,8 +21,8 @@ export function InstallDriverButton(props: {
                     .then(() => {
                         console.log("Invoked install_driver");
                     })
-                    .catch((err: Error) => {
-                        console.error(`Failed to install driver: ${err}`);
+                    .catch((e: Error) => {
+                        Events.get().showError(`Failed to install drive: ${e}`);
                     })
             }}
         >Install</Button>

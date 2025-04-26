@@ -1,4 +1,4 @@
-import {makeStyles} from "@mui/styles";
+import {styled} from "@mui/styles";
 import {Transcription} from "./system/transcription.ts";
 import {AgentConfig, AgentManager} from "./system/agentManager.ts";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
@@ -7,7 +7,6 @@ import {invoke} from "@tauri-apps/api/core";
 import {getCurrentWindow} from "@tauri-apps/api/window";
 import {Events} from "./system/events.ts";
 import {LlmResponseEvent, Prompter} from "./system/prompter.ts";
-import clsx from "clsx";
 import {useForceRender} from "./util/useForceRender.ts";
 import TranscriptionButton from "./TranscriptionButton.tsx";
 import Menu, {Tab} from "./Menu.tsx";
@@ -19,8 +18,6 @@ let initialAgentConfig: AgentConfig = AgentManager.get().clientGetAgentConfig();
 const MaxSelectableTranscriptionHistoryMaxChars = 3000;
 
 export default function AppAgentEdit() {
-    const classes = useStyles();
-
     const [changed, setChanged] = useState<boolean>(false);
     const [name, setName] = useState<string>(initialAgentConfig.name);
     const [prompt, setPrompt] = useState<string>(initialAgentConfig.agent.prompt);
@@ -66,7 +63,7 @@ export default function AppAgentEdit() {
         invoke<void>('save_agent_config', {
             initialName,
             agentConfig: initialAgentConfig,
-        }).catch(console.error);
+        }).catch(e => Events.get().showError(`Failed to save agent config: ${e}`));
     }, [currentAgentConfig]);
     const doDelete = useCallback(async () => {
         await invoke<void>('delete_agent_config', {name});
@@ -98,7 +95,7 @@ export default function AppAgentEdit() {
                 forceRender()
             }
         } catch (e) {
-            console.error(e);
+            Events.get().showError(`Failed to invoke: ${e}`);
         }
     }, [transcriptionHistory, transcription]);
 
@@ -130,14 +127,16 @@ export default function AppAgentEdit() {
     }, [currentAgentConfig.name]);
 
     return (
-        <main className={classes.root} data-tauri-drag-region="">
-            <div className={clsx(classes.section)} data-tauri-drag-region="">
+        <Box component='main' sx={{
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'row',
+        }} data-tauri-drag-region="">
+            <DivSection data-tauri-drag-region="">
                 <TextField
                     variant='standard'
-                    slotProps={{
-                        htmlInput: {
-                            className: classes.nameField,
-                        }
+                    sx={{
+                        fontSize: 30,
                     }}
                     value={name || ''}
                     onChange={(e) => {
@@ -146,12 +145,18 @@ export default function AppAgentEdit() {
                         setChanged(true);
                     }}
                 />
-                <div className={classes.actionBar} data-tauri-drag-region="">
+                <Box sx={{
+                    display: 'flex',
+                    gap: '1rem',
+                    justifyContent: 'flex-end',
+                }} data-tauri-drag-region="">
                     <Button
                         disabled={!changed}
                         onClick={doSave}
                     >{initialAgentConfig.name === '' ? 'Create' : (initialAgentConfig.name === name ? 'Save' : 'Rename')}</Button>
-                    <div className={classes.grow}/>
+                    <Box sx={{
+                        flexGrow: 1,
+                    }}/>
                     <Button
                         color='warning'
                         disabled={!changed || initialAgentConfig.name === ''}
@@ -162,7 +167,7 @@ export default function AppAgentEdit() {
                         disabled={initialAgentConfig.name !== name || initialAgentConfig.name === ''}
                         onClick={doDelete}
                     >Delete</Button>
-                </div>
+                </Box>
 
                 {/* Prompt edit/view */}
                 <Typography variant='h5'>Prompt</Typography>
@@ -195,8 +200,8 @@ export default function AppAgentEdit() {
                     </Tab>
                 </Menu>
 
-            </div>
-            <div className={clsx(classes.section)} data-tauri-drag-region="">
+            </DivSection>
+            <DivSection data-tauri-drag-region="">
                 <Box display='flex' flexDirection='row' alignItems='center' gap='1em'>
                     <Typography variant='h5'>Structured Output</Typography>
                     <FormControlLabel label='Enable' control={
@@ -266,8 +271,8 @@ export default function AppAgentEdit() {
                         </Tab>
                     </Menu>
                 </Collapse>
-            </div>
-            <div className={clsx(classes.section)} data-tauri-drag-region="">
+            </DivSection>
+            <DivSection data-tauri-drag-region="">
                 <Box display='flex' flexDirection='row' alignItems='center' gap='0.5em'>
                     <Typography variant='h5'>
                         Transcription
@@ -278,7 +283,7 @@ export default function AppAgentEdit() {
                 {/* Transcription edit/view */}
                 <Menu>
                     <Tab label='Current'>
-                        <div className={classes.sectionInner}>
+                        <DivSectionInner>
 
                             {/* Current transcription view/edit */}
                             <TextField
@@ -309,10 +314,10 @@ export default function AppAgentEdit() {
                                 />
                             </div>
 
-                        </div>
+                        </DivSectionInner>
                     </Tab>
                     <Tab label='History'>
-                        <div className={classes.sectionInner}>
+                        <DivSectionInner>
 
                             {/* Transcription history view/edit */}
                             <TextField
@@ -357,12 +362,12 @@ export default function AppAgentEdit() {
                                 />
                             </div>
 
-                        </div>
+                        </DivSectionInner>
                     </Tab>
                 </Menu>
 
-            </div>
-            <div className={clsx(classes.section)} data-tauri-drag-region="">
+            </DivSection>
+            <DivSection data-tauri-drag-region="">
                 <Box display='flex' flexDirection='row' alignItems='center' gap='0.5em'>
                     <Typography variant='h5'>Output</Typography>
                     <PrompterButton agentName={currentAgentConfig.name} popoverDirection='down'/>
@@ -398,43 +403,22 @@ export default function AppAgentEdit() {
                     await doInvoke();
                     setInvokeLoading(false)
                 }}>Invoke</Button>
-            </div>
-        </main>
+            </DivSection>
+        </Box>
     );
 }
 
-const useStyles = makeStyles({
-    root: {
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'row',
-    },
-    section: {
-        margin: '1rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-        flexGrow: 1,
-        flexBasis: '0',
-    },
-    sectionInner: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-    },
-    grow: {
-        flexGrow: 1,
-    },
-    actionBar: {
-        display: 'flex',
-        gap: '1rem',
-        justifyContent: 'flex-end',
-    },
-    output: {
-        overflow: 'scroll',
-        flexGrow: 1,
-    },
-    nameField: {
-        fontSize: 30,
-    },
+const DivSection = styled("div")({
+    margin: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    flexGrow: 1,
+    flexBasis: '0',
+});
+
+const DivSectionInner = styled("div")({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
 });

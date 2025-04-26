@@ -4,23 +4,13 @@ import {Alert, Collapse} from "@mui/material";
 import {Events} from "./system/events.ts";
 import {invoke} from "@tauri-apps/api/core";
 import {InstallDriverButton} from "./InstallDriverButton.tsx";
-import {makeStyles} from "@mui/styles";
 import {RetryDriverButton} from "./RetryDriverButton.tsx";
 
 const fetchIsDriverInstalled = async () => {
     return await invoke<boolean>('is_driver_installed');
 }
 
-const useStyles = makeStyles({
-    alert: {
-        margin: '1rem',
-        marginTop: 0,
-    },
-});
-
 export function InstallDriverNotice() {
-
-    const classes = useStyles();
     const [isDriverInstalled, setIsDriverInstalled] = useState<boolean | null>(null);
 
     useEffect(() => {
@@ -28,8 +18,8 @@ export function InstallDriverNotice() {
             .then(isInstalled => {
                 setIsDriverInstalled(isInstalled);
             })
-            .catch(err => {
-                console.error(`Failed to fetch isDriverInstalled: ${err}`);
+            .catch(e => {
+                Events.get().showError(`Failed to fetch isDriverInstalled: ${e}`);
             });
     }, []);
 
@@ -54,12 +44,15 @@ export function InstallDriverNotice() {
             <Alert
                 variant='outlined'
                 severity='warning'
-                className={classes.alert}
+                sx={{
+                    margin: '1rem',
+                    marginTop: 0,
+                }}
                 action={
-                <>
-                    <RetryDriverButton />
-                    <InstallDriverButton isDriverInstalled={isDriverInstalled !== false}/>
-                </>
+                    <>
+                        <RetryDriverButton/>
+                        <InstallDriverButton isDriverInstalled={isDriverInstalled !== false}/>
+                    </>
                 }
             >
                 The audio device driver is not installed. Please install the driver to use the device.

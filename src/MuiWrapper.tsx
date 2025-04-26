@@ -1,13 +1,9 @@
 import {ReactNode} from "react";
 import {createTheme, CssBaseline, ThemeProvider} from "@mui/material";
 import {ColorSchemeListener} from "./ColorSchemeListener.tsx";
-import createCache from '@emotion/cache';
-import {CacheProvider} from "@emotion/react";
+import MuiSnackbarProvider from "./util/MuiSnackbarProvider.tsx";
+import ErrorNotifier from "./ErrorNotifier.tsx";
 
-export const muiCache = createCache({
-    key: 'mui',
-    prepend: true,
-});
 const theme = createTheme({
     palette: {},
     colorSchemes: {
@@ -18,13 +14,14 @@ const theme = createTheme({
 
 function MuiWrapper(props: { children: ReactNode }) {
     return (
-        <CacheProvider value={muiCache}>
-            <ThemeProvider theme={theme}>
-                <CssBaseline/>
-                <ColorSchemeListener/>
+        <ThemeProvider theme={theme}>
+            <CssBaseline/>
+            <ColorSchemeListener/>
+            <MuiSnackbarProvider>
+                <ErrorNotifier />
                 {props.children}
-            </ThemeProvider>
-        </CacheProvider>
+            </MuiSnackbarProvider>
+        </ThemeProvider>
     );
 }
 

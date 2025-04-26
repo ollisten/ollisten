@@ -33,37 +33,31 @@ export default function TranscriptionButton(props: {
         });
     }, []);
 
-    let buttonDisabled: boolean = false;
     let buttonIcon: ReactNode = null;
     let buttonPopoverText: string = '';
     let buttonColor: ComponentProps<typeof Button>['color'] = undefined;
     switch (Transcription.get().getStatus()) {
         case Status.Starting:
-            buttonDisabled = true;
             buttonIcon = <MicNone/>;
             buttonPopoverText = 'Starting to listen...';
             buttonColor = 'info';
             break;
         case Status.ModelDownloading:
-            buttonDisabled = true;
             buttonIcon = <MicNone/>;
             buttonPopoverText = 'Starting to listen, model is downloading...';
             buttonColor = 'info';
             break;
         case Status.ModelLoading:
-            buttonDisabled = true;
             buttonIcon = <MicNone/>;
             buttonPopoverText = 'Starting to listen, model is loading...';
             buttonColor = 'info';
             break;
         case Status.TranscriptionStarted:
-            buttonDisabled = false;
             buttonIcon = <Mic/>;
             buttonPopoverText = 'Listening, press to stop.';
             buttonColor = 'inherit';
             break;
         case Status.Stopping:
-            buttonDisabled = true;
             buttonIcon = <MicOff/>;
             buttonPopoverText = 'Stopping listening...';
             buttonColor = 'warning';
@@ -71,12 +65,10 @@ export default function TranscriptionButton(props: {
         case Status.Stopped:
             const canStart = Transcription.get().canStart();
             if (canStart.valid) {
-                buttonDisabled = false;
                 buttonIcon = <MicOff/>;
                 buttonPopoverText = 'Not listening, press to start.';
                 buttonColor = 'inherit';
             } else {
-                buttonDisabled = true;
                 buttonIcon = <MicOff/>;
                 buttonPopoverText = 'Not listening and cannot start: ' + canStart.error;
                 buttonColor = 'error';
@@ -84,7 +76,6 @@ export default function TranscriptionButton(props: {
             break;
         case Status.Unknown:
         default:
-            buttonDisabled = true;
             buttonIcon = <MicNone/>;
             buttonPopoverText = 'Unknown status';
             buttonColor = 'inherit';

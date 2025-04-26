@@ -94,7 +94,7 @@ export class Llm {
                 case 'llm-model-option-selected':
                     invoke<string>("setup_ollama", {
                         llmModel: event.modelName
-                    }).catch(console.error);
+                    }).catch(e => Events.get().showError(`Failed to setup Ollama model: ${e}`));
                     break;
                 default:
                     console.error(`Unexpected event: ${event}`);

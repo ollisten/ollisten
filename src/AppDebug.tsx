@@ -1,10 +1,9 @@
-import {makeStyles} from "@mui/styles";
 import {useEffect, useRef} from "react";
 import {LlmRequestEvent, LlmResponseEvent} from "./system/prompter.ts";
 import {Events} from "./system/events.ts";
 import {useAppConfig} from "./util/useAppConfig.ts";
 import {DeviceSource, Transcription, TranscriptionDataEvent} from "./system/transcription.ts";
-import {Collapse, TextField, Typography} from "@mui/material";
+import {Box, Collapse, TextField, Typography} from "@mui/material";
 import Menu, {Tab} from "./Menu.tsx";
 import {useForceRender} from "./util/useForceRender.ts";
 import {LlmMessage} from "./LlmMessage.tsx";
@@ -24,8 +23,6 @@ type LlmRecord = Omit<LlmRequestEvent, 'type'> & Omit<Partial<LlmResponseEvent>,
 };
 
 export default function AppDebug() {
-    const classes = useStyles();
-
     const {appConfig} = useAppConfig();
     const forceRender = useForceRender();
     const transcriptionEventsRef = useRef<Array<TranscriptionRecord>>([]);
@@ -79,12 +76,22 @@ export default function AppDebug() {
     }, []);
 
     return (
-        <main className={classes.root} data-tauri-drag-region="">
+        <Box component='main' sx={{
+            background: 'transparent',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: '100vh',
+            minWidth: '100vw',
+            padding: '1rem',
+            overflow: 'scroll',
+            maxHeight: '30%',
+        }} data-tauri-drag-region="">
             <Menu>
                 <Tab label='Transcription'>
                     <div>
                         {transcriptionEventsRef.current.map((event, index, arr) => (
-                            <Collapse in={arr.length - index <= MaxEntriesTranscription} appear key={`${event.received}`}>
+                            <Collapse in={arr.length - index <= MaxEntriesTranscription} appear
+                                      key={`${event.received}`}>
                                 <div>
                                     <Typography variant="h6">
                                         {Transcription.get().deviceIdToSource(event.deviceId) === DeviceSource.Host ? 'Host' : 'Guest'}
@@ -128,34 +135,6 @@ export default function AppDebug() {
                     />
                 </Tab>
             </Menu>
-        </main>
+        </Box>
     );
 }
-
-const useStyles = makeStyles({
-    root: {
-        background: 'transparent',
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        minWidth: '100vw',
-        padding: '1rem',
-        overflow: 'scroll',
-        maxHeight: '30%',
-    },
-    output: {
-        overflowY: 'scroll',
-        flexGrow: 1,
-    },
-    actionBar: {
-        display: 'flex',
-        alignItems: 'center',
-        flexShrink: 0,
-    },
-    fill: {
-        flexGrow: 1,
-    },
-    hr: {
-        margin: '1rem 0',
-    },
-});

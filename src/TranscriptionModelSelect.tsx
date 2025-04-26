@@ -6,17 +6,8 @@ import {
     TranscriptionModelOptionsUpdatedEvent
 } from "./system/transcription.ts";
 import {Events} from "./system/events.ts";
-import {makeStyles} from "@mui/styles";
-
-const useStyles = makeStyles({
-    root: {
-        margin: '1rem',
-    },
-});
 
 export default function TranscriptionModelSelect() {
-
-    const classes = useStyles();
     const [options, setOptions] = useState<Option[]>(() => Transcription.get()
         .getTranscriptionModelOptions()
         .map(mapModelToOption));
@@ -45,7 +36,9 @@ export default function TranscriptionModelSelect() {
 
     return (
         <Select
-            className={classes.root}
+            sx={{
+                margin: '1rem',
+            }}
             label='Transcription Model'
             value={modelName}
             options={options}

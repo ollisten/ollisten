@@ -147,7 +147,7 @@ export class Transcription {
 
         // Setup event handler
         const unsubscribeEventHandler = Events.get().subscribe([
-            'TranscriptionDownloadProgress', 'TranscriptionLoadingProgress', 'TranscriptionStarted', 'TranscriptionData', 'TranscriptionError', 'TranscriptionStopped'
+            'TranscriptionDownloadProgress', 'TranscriptionLoadingProgress', 'TranscriptionStarted', 'TranscriptionData', 'TranscriptionStopped'
         ], (
             event: DownloadProgressEvent | LoadingProgressEvent | TranscriptionDataEvent | TranscriptionStartedEvent | ErrorEvent | StoppedEvent
         ) => {
@@ -168,9 +168,6 @@ export class Transcription {
                     break;
                 case "TranscriptionStopped":
                     this.setStatus(Status.Stopped);
-                    break;
-                case "TranscriptionError":
-                    console.error('Received transcription error', event.message);
                     break;
                 default:
                     console.error(`Unexpected event`, event);

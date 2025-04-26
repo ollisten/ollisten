@@ -1,15 +1,17 @@
-import {makeStyles} from "@mui/styles";
 import {Box, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
 import useAgents from "./useAgents.ts";
 import {Add, ContentCopy, Edit} from "@mui/icons-material";
 import {cloneAgent, createAgent, openAgentEdit} from "./agentEditWindow.ts";
 
 export default function AgentList() {
-    const classes = useStyles();
     const agents = useAgents();
 
     return (
-        <div className={classes.container}>
+        <Box sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "stretch",
+        }}>
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
@@ -26,9 +28,15 @@ export default function AgentList() {
                                     {name}
                                 </TableCell>
                                 <TableCell component="th" scope="row">
-                                    <span className={classes.ellipsis}>
+                                    <Box component='span' sx={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: '2',
+                                        WebkitBoxOrient: 'vertical',
+                                    }}>
                                         {agent.prompt}
-                                    </span>
+                                    </Box>
                                 </TableCell>
                                 <TableCell component="th" scope="row">
                                     <Box display='flex' alignItems='center'>
@@ -54,21 +62,6 @@ export default function AgentList() {
                     </TableBody>
                 </Table>
             </TableContainer>
-        </div>
+        </Box>
     );
 }
-
-const useStyles = makeStyles({
-    container: {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "stretch",
-    },
-    ellipsis: {
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        display: '-webkit-box',
-        WebkitLineClamp: '2',
-        WebkitBoxOrient: 'vertical',
-    },
-});

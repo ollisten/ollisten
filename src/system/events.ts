@@ -1,5 +1,6 @@
 import {emitTo, listen} from "@tauri-apps/api/event";
 import {Channel} from "@tauri-apps/api/core";
+import {SharedProps} from "notistack";
 
 
 export type Event = {
@@ -7,6 +8,12 @@ export type Event = {
 };
 export type Listener<E extends Event> = (event: E) => void;
 export type Unsubscribe = () => void;
+
+export type UserFacingMessageEvent = {
+    type: 'user-facing-message';
+    severity: SharedProps['variant'];
+    message: string;
+};
 
 export class Events {
 
@@ -82,8 +89,8 @@ export class Events {
             listeners.forEach(listener => {
                 try {
                     listener(event);
-                } catch (err) {
-                    console.error(`Failed processing event ${event.type}: ${err}`, event);
+                } catch (e) {
+                    Events.get().showError(`Failed processing event ${event.type}: ${e}`);
                 }
             });
         }
@@ -105,5 +112,29 @@ export class Events {
             this.sendInternal(event);
         };
         return channel;
+    }
+
+    public showSuccess(message: string) {
+        this.sendInternal<UserFacingMessageEvent>({
+            type: 'user-facing-message',
+            severity: 'success',
+            message,
+        })
+    }
+
+    public showMessage(message: string) {
+        this.sendInternal<UserFacingMessageEvent>({
+            type: 'user-facing-message',
+            severity: 'info',
+            message,
+        })
+    }
+
+    public showError(message: any) {
+        this.sendInternal<UserFacingMessageEvent>({
+            type: 'user-facing-message',
+            severity: 'error',
+            message: `${message}`,
+        })
     }
 }

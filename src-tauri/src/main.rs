@@ -22,16 +22,9 @@ use std::sync::Arc;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
+use tauri::utils::platform::resource_dir;
 use tauri::{async_runtime, App, AppHandle, Listener, Manager, RunEvent, WebviewWindow};
 use tokio::sync::{Mutex, RwLock};
-
-#[derive(Serialize)]
-struct InitializeResponse {
-    error: Option<String>,
-    whisper_model_options: Vec<String>,
-    listen_device_options: Vec<DeviceOption>,
-    llm_model_options: Vec<LlmModel>,
-}
 
 fn open_or_restore_main_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     // Check if the `main` window already exists
@@ -96,14 +89,18 @@ async fn main() {
         .setup(|app| {
             let window = open_or_restore_main_window(app.handle()).unwrap();
             let is_dark_mode = window.theme().unwrap_or(tauri::Theme::Light) == tauri::Theme::Dark;
-            setup_tray(app, is_dark_mode);
+            if let Err(e) = setup_tray(app, is_dark_mode) {
+                error!("Failed to setup tray: {}", e);
+            }
             Ok(())
         })
         .on_menu_event({
             let should_exit = should_exit.clone();
             move |app, event| match event.id.as_ref() {
                 "main" => {
-                    open_or_restore_main_window(app);
+                    if let Err(e) = open_or_restore_main_window(app) {
+                        error!("Failed to open main window: {}", e);
+                    }
                 }
                 "exit" => {
                     should_exit.store(true, Ordering::SeqCst);
@@ -150,14 +147,16 @@ fn setup_tray(app: &App, is_dark_mode: bool) -> Result<(), String> {
         ],
     )
     .map_err(|e| format!("Failed to create menu: {}", e))?;
+
+    let resource_path = resource_dir(app.package_info(), &app.env())
+        .map_err(|e| format!("Failed to locate resource directory: {}", e))?;
+    let icon_path = resource_path
+        .join("resources")
+        .join("icons")
+        .join(is_dark_mode.then_some(ICON_DARK).unwrap_or(ICON_LIGHT));
     TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
-        .icon(
-            Image::from_path(Path::new(
-                is_dark_mode.then_some(ICON_DARK).unwrap_or(ICON_LIGHT),
-            ))
-            .map_err(|e| format!("Failed to load icon: {}", e))?,
-        )
+        .icon(Image::from_path(icon_path).map_err(|e| format!("Failed to load icon: {}", e))?)
         .build(app)
         .map_err(|e| format!("Failed to create tray icon: {}", e))?;
 
@@ -177,17 +176,21 @@ fn setup_tray(app: &App, is_dark_mode: bool) -> Result<(), String> {
 }
 
 const TRAY_ID: &str = "ollisten-tray";
-const ICON_LIGHT: &str = "icons/ollisten-logo-circle-black.png";
-const ICON_DARK: &str = "icons/ollisten-logo-circle-white.png";
+const ICON_LIGHT: &str = "ollisten-logo-circle-black.png";
+const ICON_DARK: &str = "ollisten-logo-circle-white.png";
 
 fn update_tray_icon(app: &AppHandle, is_dark_mode: bool) -> Result<(), String> {
     let tray = app
         .tray_by_id(TRAY_ID)
         .ok_or_else(|| "Tray icon not found".to_string())?;
 
-    let icon_path = if is_dark_mode { ICON_DARK } else { ICON_LIGHT };
-    let icon = Image::from_path(Path::new(icon_path))
-        .map_err(|e| format!("Failed to load icon: {}", e))?;
+    let resource_path = resource_dir(app.package_info(), &app.env())
+        .map_err(|e| format!("Failed to locate resource directory: {}", e))?;
+    let icon_path = resource_path
+        .join("resources")
+        .join("icons")
+        .join(is_dark_mode.then_some(ICON_DARK).unwrap_or(ICON_LIGHT));
+    let icon = Image::from_path(icon_path).map_err(|e| format!("Failed to load icon: {}", e))?;
 
     tray.set_icon(Some(icon))
         .map_err(|e| format!("Failed to set tray icon: {}", e))?;

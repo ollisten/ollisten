@@ -115,7 +115,7 @@ export class Prompter {
                         }
                         this.transcriptionHistory.push(transcriptionStr);
                         this.transcriptionLatest.push(transcriptionStr);
-                        this.debouncedInvoke().catch(console.error);
+                        this.debouncedInvoke().catch(e => Events.get().showError(`Failed to invoke: ${e}`));
                         break;
                     case 'file-agent-deleted':
                         if (event.name === this.agentName) {
