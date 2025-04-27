@@ -7,9 +7,11 @@ import {Box, Collapse, TextField, Typography} from "@mui/material";
 import Menu, {Tab} from "./Menu.tsx";
 import {useForceRender} from "./util/useForceRender.ts";
 import {LlmMessage} from "./LlmMessage.tsx";
+import {randomTimeUuid} from "./util/idUtil.ts";
 
 const MaxEntriesTranscription = 9;
 const MaxEntriesLlm = 6;
+const MaxEntriesEvents = 30;
 const HideBuffer = 3;
 
 Transcription.get(); // Required to subscribe to transcription events
@@ -21,12 +23,53 @@ type LlmRecord = Omit<LlmRequestEvent, 'type'> & Omit<Partial<LlmResponseEvent>,
     requested: Date,
     responded?: Date,
 };
+export const AllEventTypes = [
+    'TranscriptionData',
+    'TranscriptionDownloadProgress',
+    'TranscriptionLoadingProgress',
+    'TranscriptionStarted',
+    'TranscriptionStopped',
+    'agent-window-closed',
+    'app-config-changed',
+    'device-input-option-selected',
+    'device-input-options-updated',
+    'device-output-updated',
+    'file-agent-created',
+    'file-agent-deleted',
+    'file-agent-modified',
+    'llm-model-option-selected',
+    'llm-model-options-updated',
+    'llm-request',
+    'llm-response',
+    'ollama-is-stopped',
+    'ollama-no-models',
+    'ollama-not-installed',
+    'prompter-status-changed',
+    'status-change',
+    'transcription-model-option-selected',
+    'transcription-model-options-updated',
+];
 
 export default function AppDebug() {
     const {appConfig} = useAppConfig();
     const forceRender = useForceRender();
     const transcriptionEventsRef = useRef<Array<TranscriptionRecord>>([]);
     const llmRecordsRef = useRef<Array<LlmRecord>>([]);
+    const eventsRef = useRef<Array<any>>([]);
+
+    useEffect(() => {
+        return Events.get().subscribe(AllEventTypes, event => {
+            eventsRef.current.unshift({
+                ...event,
+                received: new Date(),
+                uuid: randomTimeUuid(),
+            });
+            while (eventsRef.current.length > MaxEntriesEvents + HideBuffer) {
+                eventsRef.current.pop();
+            }
+            forceRender();
+        });
+    }, []);
 
     useEffect(() => {
         return Events.get().subscribe([
@@ -133,6 +176,20 @@ export default function AppDebug() {
                         value={JSON.stringify(appConfig, null, 4) || ''}
                         rows={26}
                     />
+                </Tab>
+                <Tab label='Events'>
+                    <div>
+                        {eventsRef.current.map((event, index, arr) => (
+                            <Collapse in={arr.length - index <= MaxEntriesEvents} appear
+                                      key={event.uuid}>
+                                <div>
+                                    <Typography variant='body1' gutterBottom component='pre' fontSize={10}>
+                                        {JSON.stringify(event, null, 4)}
+                                    </Typography>
+                                </div>
+                            </Collapse>
+                        ))}
+                    </div>
                 </Tab>
             </Menu>
         </Box>
