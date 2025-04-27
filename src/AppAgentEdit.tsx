@@ -1,8 +1,18 @@
-import {styled} from "@mui/styles";
 import {Transcription} from "./system/transcription.ts";
 import {AgentConfig, AgentManager} from "./system/agentManager.ts";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {Box, Button, Checkbox, Collapse, FormControlLabel, Slider, TextField, Typography} from "@mui/material";
+import {
+    Box,
+    Button,
+    Checkbox,
+    Collapse,
+    FormControlLabel,
+    Slider,
+    SxProps,
+    TextField,
+    Theme,
+    Typography
+} from "@mui/material";
 import {invoke} from "@tauri-apps/api/core";
 import {getCurrentWindow} from "@tauri-apps/api/window";
 import {Events} from "./system/events.ts";
@@ -16,6 +26,20 @@ Transcription.get(); // Required to subscribe to transcription events
 let initialAgentConfig: AgentConfig = AgentManager.get().clientGetAgentConfig();
 
 const MaxSelectableTranscriptionHistoryMaxChars = 3000;
+
+const SectionStyle: SxProps<Theme> = {
+    margin: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    flexGrow: 1,
+    flexBasis: '0',
+};
+const SectionInnerStyle: SxProps<Theme> = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+};
 
 export default function AppAgentEdit() {
     const [changed, setChanged] = useState<boolean>(false);
@@ -132,7 +156,7 @@ export default function AppAgentEdit() {
             display: 'flex',
             flexDirection: 'row',
         }} data-tauri-drag-region="">
-            <DivSection data-tauri-drag-region="">
+            <Box sx={SectionStyle} data-tauri-drag-region="">
                 <TextField
                     variant='standard'
                     sx={{
@@ -200,8 +224,8 @@ export default function AppAgentEdit() {
                     </Tab>
                 </Menu>
 
-            </DivSection>
-            <DivSection data-tauri-drag-region="">
+            </Box>
+            <Box sx={SectionStyle} data-tauri-drag-region="">
                 <Box display='flex' flexDirection='row' alignItems='center' gap='1em'>
                     <Typography variant='h5'>Structured Output</Typography>
                     <FormControlLabel label='Enable' control={
@@ -271,8 +295,8 @@ export default function AppAgentEdit() {
                         </Tab>
                     </Menu>
                 </Collapse>
-            </DivSection>
-            <DivSection data-tauri-drag-region="">
+            </Box>
+            <Box sx={SectionStyle} data-tauri-drag-region="">
                 <Box display='flex' flexDirection='row' alignItems='center' gap='0.5em'>
                     <Typography variant='h5'>
                         Transcription
@@ -283,7 +307,7 @@ export default function AppAgentEdit() {
                 {/* Transcription edit/view */}
                 <Menu>
                     <Tab label='Current'>
-                        <DivSectionInner>
+                        <Box sx={SectionInnerStyle}>
 
                             {/* Current transcription view/edit */}
                             <TextField
@@ -314,10 +338,10 @@ export default function AppAgentEdit() {
                                 />
                             </div>
 
-                        </DivSectionInner>
+                        </Box>
                     </Tab>
                     <Tab label='History'>
-                        <DivSectionInner>
+                        <Box sx={SectionInnerStyle}>
 
                             {/* Transcription history view/edit */}
                             <TextField
@@ -362,12 +386,12 @@ export default function AppAgentEdit() {
                                 />
                             </div>
 
-                        </DivSectionInner>
+                        </Box>
                     </Tab>
                 </Menu>
 
-            </DivSection>
-            <DivSection data-tauri-drag-region="">
+            </Box>
+            <Box sx={SectionStyle} data-tauri-drag-region="">
                 <Box display='flex' flexDirection='row' alignItems='center' gap='0.5em'>
                     <Typography variant='h5'>Output</Typography>
                     <PrompterButton agentName={currentAgentConfig.name} popoverDirection='down'/>
@@ -403,22 +427,7 @@ export default function AppAgentEdit() {
                     await doInvoke();
                     setInvokeLoading(false)
                 }}>Invoke</Button>
-            </DivSection>
+            </Box>
         </Box>
     );
 }
-
-const DivSection = styled("div")({
-    margin: '1rem',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-    flexGrow: 1,
-    flexBasis: '0',
-});
-
-const DivSectionInner = styled("div")({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-});
