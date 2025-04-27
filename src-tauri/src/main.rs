@@ -13,6 +13,7 @@ use crate::config::watcher::WatcherState;
 use crate::llm::router::LlmRouterState;
 use crate::llm::types::LlmModel;
 use crate::transcription::control::TranscriptionState;
+use crate::util::error_handler::show_error;
 use log::{error, info, LevelFilter};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -90,21 +91,24 @@ async fn main() {
             let window = open_or_restore_main_window(app.handle()).unwrap();
             let is_dark_mode = window.theme().unwrap_or(tauri::Theme::Light) == tauri::Theme::Dark;
             if let Err(e) = setup_tray(app, is_dark_mode) {
-                error!("Failed to setup tray: {}", e);
+                show_error(format!("Failed to setup tray: {}", e), app.handle().clone());
             }
             Ok(())
         })
         .on_menu_event({
             let should_exit = should_exit.clone();
-            move |app, event| match event.id.as_ref() {
+            move |app_handle, event| match event.id.as_ref() {
                 "main" => {
-                    if let Err(e) = open_or_restore_main_window(app) {
-                        error!("Failed to open main window: {}", e);
+                    if let Err(e) = open_or_restore_main_window(app_handle) {
+                        show_error(
+                            format!("Failed to open main window: {}", e),
+                            app_handle.clone(),
+                        );
                     }
                 }
                 "exit" => {
                     should_exit.store(true, Ordering::SeqCst);
-                    app.exit(0);
+                    app_handle.exit(0);
                 }
                 _ => {
                     println!("menu item {:?} not handled", event.id);
@@ -125,7 +129,10 @@ async fn main() {
                             let _app_handle = _app_handle.clone();
                             async_runtime::spawn(async move {
                                 if let Err(e) = release_all_resources(_app_handle.clone()).await {
-                                    error!("Failed to release resources: {}", e);
+                                    show_error(
+                                        format!("Failed to release resources: {}", e),
+                                        _app_handle,
+                                    );
                                 }
                             });
                         }
@@ -168,10 +175,13 @@ fn setup_tray(app: &App, is_dark_mode: bool) -> Result<(), String> {
             "false" | "light" | "\"light\"" => false,
             _ => return,
         };
-        update_tray_icon(&app_handle, is_dark_mode)
-            .unwrap_or_else(|e| error!("Failed to update tray icon: {}", e));
+        if let Err(e) = update_tray_icon(&app_handle, is_dark_mode) {
+            show_error(
+                format!("Failed to update tray icon: {}", e),
+                app_handle.clone(),
+            );
+        }
     });
-
     Ok(())
 }
 

@@ -1,3 +1,4 @@
+use crate::util::error_handler::show_error;
 use log::{error, info};
 use std::process::Command;
 use tauri::utils::platform::resource_dir;
@@ -46,11 +47,14 @@ pub async fn install_driver(app: tauri::AppHandle) -> Result<(), String> {
 
     // Check for installation success
     if !output.status.success() {
-        error!(
-            "Installation failed with status {} {}{}",
-            output.status,
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
+        show_error(
+            format!(
+                "Installation failed with status {} {}{}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ),
+            app,
         );
         return Err(format!(
             "Installation failed with status {} {}{}",

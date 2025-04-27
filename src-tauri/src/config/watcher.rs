@@ -1,4 +1,5 @@
 use crate::config::agents::{parse_agent, parse_name_from_file_path, FileChangeEvent};
+use crate::util::error_handler::show_error;
 use crate::util::paths::get_app_sub_path;
 use log::{error, info};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
@@ -70,19 +71,38 @@ pub async fn start_config_watcher(
                                 Ok(content) => Some(match parse_agent(&content) {
                                     Ok(agent) => agent,
                                     Err(e) => {
-                                        error!("Failed to parse agent {}: {}", path.display(), e);
+                                        show_error(
+                                            format!(
+                                                "Failed to parse agent {}: {}",
+                                                path.display(),
+                                                e
+                                            ),
+                                            app.clone(),
+                                        );
                                         return;
                                     }
                                 }),
                                 Err(e) => {
-                                    error!("Failed to read file {}: {}", path.display(), e);
+                                    show_error(
+                                        format!("Failed to read file {}: {}", path.display(), e),
+                                        app.clone(),
+                                    );
                                     return;
                                 }
                             },
                         };
 
                         // Create event payload
-                        let agent_name = parse_name_from_file_path(&path);
+                        let agent_name = match parse_name_from_file_path(&path) {
+                            Ok(name) => name,
+                            Err(e) => {
+                                show_error(
+                                    format!("Failed to parse agent name: {}", e),
+                                    app.clone(),
+                                );
+                                return;
+                            }
+                        };
                         let file_event = FileChangeEvent {
                             r#type: event_type.to_string(),
                             name: agent_name,
@@ -97,7 +117,7 @@ pub async fn start_config_watcher(
                         }
                     }
                 }
-                Err(e) => error!("Watch error: {:?}", e),
+                Err(e) => show_error(format!("Watch error: {:?}", e), app.clone()),
             }
         },
         Config::default(),

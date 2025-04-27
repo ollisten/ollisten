@@ -7,21 +7,31 @@ import {SharedProps, useSnackbar} from "notistack";
 import {Close} from "@mui/icons-material";
 import {randomUuid} from "./util/idUtil.ts";
 
+type RustErrorEvent = {
+    type: 'RustErrorEvent';
+    message: string;
+}
+
 export default function ErrorNotifier() {
     const {enqueueSnackbar, closeSnackbar} = useSnackbar();
     useEffect(() => {
         return Events.get().subscribe([
+            'RustErrorEvent',
             'user-facing-message',
             'TranscriptionDownloadProgress',
             'TranscriptionLoadingProgress',
             'TranscriptionError',
         ], (
-            event: UserFacingMessageEvent | DownloadProgressEvent | LoadingProgressEvent | ErrorEvent
+            event: RustErrorEvent | UserFacingMessageEvent | DownloadProgressEvent | LoadingProgressEvent | ErrorEvent
         ) => {
             var variant: SharedProps['variant'] = 'info';
             var message = '';
             var key = randomUuid();
             switch (event.type) {
+                case 'RustErrorEvent':
+                    variant = 'error';
+                    message = event.message;
+                    break;
                 case 'user-facing-message':
                     variant = event.severity;
                     message = event.message;

@@ -79,7 +79,7 @@ fn read_agent_configs() -> Result<Vec<AgentConfig>, String> {
                 })?;
 
                 // Create AgentConfig
-                let agent_name = parse_name_from_file_path(&path);
+                let agent_name = parse_name_from_file_path(&path)?;
                 let agent_config = AgentConfig {
                     agent,
                     name: agent_name,
@@ -137,14 +137,14 @@ pub fn parse_agent(content: &str) -> Result<Agent, String> {
 }
 
 /// parse file name without extension via PathBug
-pub fn parse_name_from_file_path(path_buf: &PathBuf) -> String {
-    path_buf
+pub fn parse_name_from_file_path(path_buf: &PathBuf) -> Result<String, String> {
+    Ok(path_buf
         .as_path()
         .file_name()
-        .unwrap()
+        .ok_or_else(|| format!("Unknown file name: {}", path_buf.as_path().display()))?
         .to_str()
-        .unwrap()
+        .ok_or_else(|| format!("Unknown file name: {}", path_buf.as_path().display()))?
         .split('.')
         .collect::<Vec<&str>>()[0]
-        .to_string()
+        .to_string())
 }
