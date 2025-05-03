@@ -1,7 +1,7 @@
 use kalosm::sound::WhisperSource;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 pub enum TranscriptionModel {
     Tiny,
     QuantizedTiny,

@@ -16,6 +16,7 @@ use crate::transcription::control::TranscriptionState;
 use crate::util::error_handler::show_error;
 use log::{error, info, LevelFilter};
 use serde::Serialize;
+use std::any::Any;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -55,8 +56,7 @@ async fn main() {
     let should_exit = Arc::new(AtomicBool::new(false));
     tauri::Builder::default()
         .manage(TranscriptionState {
-            whisper_model: Arc::new(Mutex::new(None)),
-            active_sessions: Arc::new(Mutex::new(HashMap::new())),
+            session: Arc::new(Mutex::new(None)),
         })
         .manage(WatcherState {
             watcher: Arc::new(Mutex::new(None)),
@@ -120,6 +120,33 @@ async fn main() {
         .run({
             let should_exit = should_exit.clone();
             move |_app_handle, event| match event {
+                RunEvent::WindowEvent { event, .. } => match event {
+                    tauri::WindowEvent::Destroyed { .. } => {
+                        // This ensures if you close all windows but main window,
+                        // resources are released
+                        // Print all window keys
+                        if _app_handle
+                            .webview_windows()
+                            .keys()
+                            .all(|key| key != "main")
+                        {
+                            info!(
+                                "Releasing resources since all windows are closed: {:?}",
+                                _app_handle.webview_windows().keys()
+                            );
+                            let _app_handle = _app_handle.clone();
+                            async_runtime::spawn(async move {
+                                if let Err(e) = release_all_resources(_app_handle.clone()).await {
+                                    show_error(
+                                        format!("Failed to release resources: {}", e),
+                                        _app_handle,
+                                    );
+                                }
+                            });
+                        }
+                    }
+                    _ => {}
+                },
                 RunEvent::ExitRequested { api, .. } => {
                     #[cfg(target_os = "macos")]
                     {
