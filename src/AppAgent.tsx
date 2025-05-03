@@ -120,7 +120,11 @@ export default function AppAgent() {
                         flexShrink: 0,
                         marginBottom: '0.5rem',
                     }}>
-                        <IconButton onClick={() => getCurrentWindow().close()}>
+                        <IconButton onClick={() => {
+                            getCurrentWindow().close()
+                            // Fallback to destroy if close doesn't work
+                            setTimeout(() => getCurrentWindow().destroy(), 1000)
+                        }}>
                             <Close/>
                         </IconButton>
                         <IconButton size='small' onClick={() => setTaskbarPinned(!taskbarPinned)}>
