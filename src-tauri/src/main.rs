@@ -124,16 +124,12 @@ async fn main() {
                     tauri::WindowEvent::Destroyed { .. } => {
                         // This ensures if you close all windows but main window,
                         // resources are released
-                        // Print all window keys
                         if _app_handle
                             .webview_windows()
                             .keys()
-                            .all(|key| key != "main")
+                            .all(|key| key == "main")
                         {
-                            info!(
-                                "Releasing resources since all windows are closed: {:?}",
-                                _app_handle.webview_windows().keys()
-                            );
+                            info!("Releasing resources since all windows are closed");
                             let _app_handle = _app_handle.clone();
                             async_runtime::spawn(async move {
                                 if let Err(e) = release_all_resources(_app_handle.clone()).await {
@@ -151,7 +147,7 @@ async fn main() {
                     #[cfg(target_os = "macos")]
                     {
                         if !should_exit.load(Ordering::SeqCst) {
-                            info!("Preventing exit on macOS, instead releasing resources");
+                            info!("Preventing exit on macOS, will stay in taskbar");
                             api.prevent_exit();
                             let _app_handle = _app_handle.clone();
                             async_runtime::spawn(async move {
