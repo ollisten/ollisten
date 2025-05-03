@@ -43,7 +43,7 @@ export default function PrompterButton(props: {
     let buttonColor: ComponentProps<typeof Button>['color'] = undefined;
     switch (prompterStatus) {
         case PrompterStatus.Paused:
-            buttonColor = 'inherit';
+            buttonColor = 'error';
             if (!llmWorking) {
                 buttonPopoverText = 'Agent is paused. Press to resume.';
                 buttonIcon = <EngineOffOutlineIcon/>;

@@ -340,7 +340,7 @@ export class Transcription {
     private deviceInputOptions: DeviceOption[] = [];
     private deviceInputId: number | null = null;
 
-    private async fetchInputDevices() {
+    public async fetchInputDevices() {
         try {
             const response = await invoke<DeviceOption[]>("get_listen_device_options");
             console.log('Recv get_listen_device_options', response);

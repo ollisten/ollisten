@@ -67,7 +67,7 @@ export default function TranscriptionButton(props: {
             if (canStart.valid) {
                 buttonIcon = <MicOff/>;
                 buttonPopoverText = 'Not listening, press to start.';
-                buttonColor = 'inherit';
+                buttonColor = 'error';
             } else {
                 buttonIcon = <MicOff/>;
                 buttonPopoverText = 'Not listening and cannot start: ' + canStart.error;

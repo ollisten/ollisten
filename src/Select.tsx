@@ -6,7 +6,7 @@ export type Option = {
     value: string;
 }
 
-export default function Select(props: {
+export default function (props: {
     sx?: SxProps<Theme>;
     label: string;
     options: Option[]
@@ -27,6 +27,7 @@ export default function Select(props: {
                 label={props.label}
                 value={props.value === null ? '' : props.value}
                 onChange={onChange}
+                sx={{flex: '1 1 auto'}}
             >
                 {props.options.map(option =>
                     <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>

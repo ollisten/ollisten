@@ -7,12 +7,17 @@ import {
     Transcription
 } from "./system/transcription.ts";
 import {Events} from "./system/events.ts";
+import {Box, IconButton} from "@mui/material";
+import {Refresh} from "@mui/icons-material";
 
 export default function InputDeviceSelect() {
 
     const [options, setOptions] = useState<Option[]>(() => Transcription.get()
         .getInputDeviceOptions()
         .map(mapDeviceToOption));
+    const refreshOptions = useCallback(() => Transcription.get()
+        .fetchInputDevices()
+        .catch(e => Events.get().showError(`Failed to refresh input devices: ${e}`)), [])
     const [deviceId, setDeviceId] = useState<string | null>(() => mapDeviceIdToString(Transcription.get()
         .getInputDeviceId()));
 
@@ -38,17 +43,24 @@ export default function InputDeviceSelect() {
     }, []);
 
     return (
-        <Select
-            sx={{
-                margin: '1rem',
-            }}
-            label='Input device'
-            value={deviceId}
-            options={options}
-            onSelect={useCallback((newValue: string) => {
-                Transcription.get().selectInputDeviceId(parseInt(newValue));
-            }, [])}
-        />
+        <Box display="flex">
+            <Select
+                sx={{
+                    margin: '1rem',
+                }}
+                label='Input device'
+                value={deviceId}
+                options={options}
+                onSelect={useCallback((newValue: string) => {
+                    Transcription.get().selectInputDeviceId(parseInt(newValue));
+                }, [])}
+            />
+            <Box flex='0 1 auto' display='flex' alignItems='center' justifyContent='center' marginRight={2}>
+                <IconButton size='large' onClick={refreshOptions}>
+                    <Refresh/>
+                </IconButton>
+            </Box>
+        </Box>
     );
 }
 
