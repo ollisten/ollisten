@@ -28,6 +28,9 @@ use tauri::utils::platform::resource_dir;
 use tauri::{async_runtime, App, AppHandle, Listener, Manager, RunEvent, WebviewWindow};
 use tokio::sync::{Mutex, RwLock};
 
+const MAIN_WINDOW_WIDTH: f64 = 600.0;
+const MAIN_WINDOW_HEIGHT: f64 = 450.0;
+
 fn open_or_restore_main_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     // Check if the `main` window already exists
     if let Some(main_window) = app.get_webview_window("main") {
@@ -44,8 +47,8 @@ fn open_or_restore_main_window(app: &AppHandle) -> Result<WebviewWindow, String>
     } else {
         tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
             .title("ollisten")
-            .min_inner_size(600f64, 400f64)
-            .inner_size(600f64, 400f64)
+            .min_inner_size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT)
+            .inner_size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT)
             .build()
             .map_err(|e| format!("Failed to create main window: {}", e))
     }
@@ -82,6 +85,7 @@ async fn main() {
             transcription::model::list_available_transcription_models,
             transcription::control::start_transcription,
             transcription::control::stop_transcription,
+            config::agents::open_agent_config_folder,
             config::agents::get_all_agent_configs,
             config::agents::save_agent_config,
             config::agents::delete_agent_config,
