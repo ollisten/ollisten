@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::utils::platform::resource_dir;
 use tauri::{async_runtime, App, AppHandle, Listener, Manager, RunEvent, WebviewWindow};
 use tokio::sync::{Mutex, RwLock};
@@ -44,7 +44,8 @@ fn open_or_restore_main_window(app: &AppHandle) -> Result<WebviewWindow, String>
     } else {
         tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
             .title("ollisten")
-            .min_inner_size(800f64, 600f64)
+            .min_inner_size(600f64, 400f64)
+            .inner_size(600f64, 400f64)
             .build()
             .map_err(|e| format!("Failed to create main window: {}", e))
     }
@@ -186,6 +187,21 @@ fn setup_tray(app: &App, is_dark_mode: bool) -> Result<(), String> {
         .join(is_dark_mode.then_some(ICON_DARK).unwrap_or(ICON_LIGHT));
     TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| match event {
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } => {
+                // in this example, let's show and focus the main window when the tray is clicked
+                let app = tray.app_handle();
+                if let Err(e) = open_or_restore_main_window(app) {
+                    show_error(format!("Failed to open main window: {}", e), app.clone());
+                }
+            }
+            _ => {}
+        })
         .icon(Image::from_path(icon_path).map_err(|e| format!("Failed to load icon: {}", e))?)
         .build(app)
         .map_err(|e| format!("Failed to create tray icon: {}", e))?;

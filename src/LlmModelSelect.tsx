@@ -41,11 +41,11 @@ export default function LlmModelSelect() {
                     margin: '1rem',
                 }}
                 label='LLM Model'
-                value={modelName}
+                value={modelName || ''}
                 options={options}
-                onSelect={useCallback((newValue: string) => {
-                    Llm.get().selectLlmModelName(newValue);
-                }, [])}
+                onSelect={useCallback((newValue: string) => Llm.get()
+                    .selectLlmModelName(newValue)
+                    .catch(e => Events.get().showError(`Failed to select LLM Model ${newValue}: ${e}`)), [])}
             />
             <Box flex='0 1 auto' display='flex' alignItems='center' justifyContent='center' marginRight={2}>
                 <IconButton size='large' onClick={refreshOptions}>
