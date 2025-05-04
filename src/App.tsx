@@ -15,6 +15,7 @@ import EngineIcon from "./icon/EngineIcon.tsx";
 import Note from "./Note.tsx";
 import {Box, Link} from "@mui/material";
 import DebugButton from "./DebugButton.tsx";
+import {invoke} from "@tauri-apps/api/core";
 
 const LauncherTabName = 'Launch';
 
@@ -48,7 +49,14 @@ export default function App() {
                 </Tab>
                 <Tab label='Agent' icon={<Person/>}>
                     <Note title='Agents'
-                          description='An agent serves a single purpose and displays its output in its own window'/>
+                          description='An agent periodically outputs an answer given transcribed input and its previous answer. Each Agent is displayed in its own window.'/>
+                    <Note description={(
+                        <>
+                            To manually edit, import or export an agent, manage the agent files&nbsp;
+                            <Link href='#' onClick={() => invoke<void>('open_agent_config_folder')}>in this folder</Link>
+                            . Any changes are immediately reflected in the app.
+                        </>
+                    )}/>
                     <AgentList/>
                 </Tab>
                 <Tab label='Audio' icon={<Speaker/>}>
