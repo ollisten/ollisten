@@ -95,9 +95,12 @@ async fn main() {
         .setup(|app| {
             let window = open_or_restore_main_window(app.handle()).unwrap();
             let is_dark_mode = window.theme().unwrap_or(tauri::Theme::Light) == tauri::Theme::Dark;
+
+            // Setup app Tray and related events
             if let Err(e) = setup_tray(app, is_dark_mode) {
                 show_error(format!("Failed to setup tray: {}", e), app.handle().clone());
             }
+
             Ok(())
         })
         .on_menu_event({
@@ -164,6 +167,15 @@ async fn main() {
                                 }
                             });
                         }
+                    }
+                }
+                RunEvent::Reopen { .. } => {
+                    // Open main window on dock icon click
+                    if let Err(e) = open_or_restore_main_window(&_app_handle) {
+                        show_error(
+                            format!("Failed to open main window: {}", e),
+                            _app_handle.clone(),
+                        );
                     }
                 }
                 _ => {}
