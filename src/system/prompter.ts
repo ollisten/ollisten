@@ -5,6 +5,7 @@ import debounce, {DebouncedFunction} from "../util/debounce.ts";
 import {DeviceSource, Transcription, TranscriptionDataEvent} from "./transcription.ts";
 import {Events, Unsubscribe} from "./events.ts";
 import {getCurrentWindow} from "@tauri-apps/api/window";
+import {currentWindowClose} from "../util/windowUtil.ts";
 
 export enum PrompterStatus {
     Stopped,
@@ -39,7 +40,8 @@ type DebouncedInvoke = DebouncedFunction<[], void>;
 
 // Add handlebar helper json that will JSON.stringify
 const HandlebarHelpers: { [name: string]: Function } = {
-    json: (context: object) => JSON.stringify(context, null, 4),
+    json_stringify: (context: object) => JSON.stringify(context, null, 4),
+    // If you add a new one, document it in AppAgentEdit.tsx
 };
 
 export class Prompter {
@@ -119,7 +121,7 @@ export class Prompter {
                         break;
                     case 'file-agent-deleted':
                         if (event.name === this.agentName) {
-                            getCurrentWindow().close();
+                            currentWindowClose();
                         }
                         break;
                     case 'file-agent-created':
@@ -244,6 +246,7 @@ export class Prompter {
         previousAnswer: string | null,
         previousAnswerJson: object | null,
     ): object {
+        // If you modify this, document it in AppAgentEdit.tsx
         return {
             transcription: {
                 all: transcriptionHistory,

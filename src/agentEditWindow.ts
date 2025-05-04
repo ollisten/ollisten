@@ -11,7 +11,7 @@ export const openAgentEdit = (name: string, agent: Agent) => {
         title: 'Agent',
         center: true,
         width: 1440,
-        height: 900,
+        height: 910,
         resizable: true,
         visible: true,
         contentProtected: true,
