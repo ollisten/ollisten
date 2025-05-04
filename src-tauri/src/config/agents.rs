@@ -37,6 +37,17 @@ pub struct FileChangeEvent {
 }
 
 #[tauri::command]
+pub async fn open_agent_config_folder() -> Result<(), String> {
+    let agents_dir =
+        get_app_sub_path("agent").map_err(|e| format!("Failed to get agents directory: {}", e))?;
+
+    tauri_plugin_opener::open_path(agents_dir, None::<&str>)
+        .map_err(|e| format!("Failed to open agents directory: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_all_agent_configs(
     app_handle: tauri::AppHandle,
     state: State<'_, WatcherState>,
