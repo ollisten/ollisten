@@ -1,12 +1,25 @@
-import {getCurrentWindow} from "@tauri-apps/api/window";
+import {getCurrentWindow, Window} from "@tauri-apps/api/window";
 import {Events} from "../system/events.ts";
 
-export async function currentWindowClose() {
+export async function currentWindowCloseSafely() {
+    await windowCloseSafely(getCurrentWindow())
+}
+
+export async function windowCloseSafely(window: Window) {
     try {
-        await getCurrentWindow().close();
+        await window.close();
     } catch (e) {
-        Events.get().showError(`Failed to close window, force closing: ${e}`);
+        Events.get().showError(`Failed to close window: ${e}`);
     }
     // Fallback to destroy if close doesn't work
-    setTimeout(() => getCurrentWindow().destroy(), 1000)
+    return new Promise<void>((resolve) => {
+        setTimeout(async () => {
+            try {
+                await window.destroy();
+            } catch (e) {
+                // Likely window was already closed
+            }
+            resolve();
+        }, 700)
+    })
 }

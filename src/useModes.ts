@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect} from "react";
 import useAgents, {AgentsMap} from "./useAgents.ts";
 import {AppConfig, useAppConfig} from "./util/useAppConfig.ts";
 import {randomTimeUuid} from "./util/idUtil.ts";
@@ -14,12 +14,13 @@ export type SetModeAgents = (modeId: string, agentNames: string[]) => void;
 
 export default function useModes(): {
     runningAgents: Set<string>;
-    runningModeId: string | null;
+    runningModeIds: Set<string>;
     startAll: () => void;
     startAgent: (agentName: string) => void;
     startMode: (modeId: string) => void;
     stop: () => void;
     stopAgent: (agentName: string) => void;
+    stopMode: (modeId: string) => void;
     modes: NonNullable<AppConfig['modes']>;
     getAgentByName: (name: string) => AgentsMap[string];
     createMode: CreateMode;
@@ -33,19 +34,7 @@ export default function useModes(): {
 
     const forceRender = useForceRender();
     const runningAgents = new Set(AgentManager.get().getRunningAgentNames());
-    const [runningModeId, setRunningModeId] = useState<string | null>(() => {
-        // Infer which mode is running
-        const runningAgentNames = new Set(AgentManager.get().getRunningAgentNames());
-        if (!runningAgentNames.size) {
-            return null;
-        }
-        for (const [modeId, {agents: modeAgentNames}] of Object.entries(appConfig.modes || {})) {
-            if (!!modeAgentNames.length && modeAgentNames.length === runningAgentNames.size && modeAgentNames.every(name => runningAgentNames.has(name))) {
-                return modeId;
-            }
-        }
-        return null;
-    });
+    const runningModeIds = getRunningModeIds(appConfig, runningAgents);
 
     const createMode: CreateMode = useCallback(() => {
         setAppConfig(c => {
@@ -90,46 +79,53 @@ export default function useModes(): {
         return agentByName[name];
     }, [agentByName]);
 
-    const startAll = useCallback(() => {
-        Transcription.get().startTranscription();
-        AgentManager.get().managerStart();
-    }, []);
-
-    const startMode = useCallback((modeId: string) => {
-        setRunningModeId(modeId);
-        const agentNamesToStart = appConfig.modes?.[modeId]?.agents;
-        if (!agentNamesToStart?.length) {
+    const startAgents = useCallback((agentNames?: string[]) => {
+        if (agentNames != undefined && !agentNames.length) {
             return;
         }
-        Transcription.get().startTranscription();
-        AgentManager.get().managerStart(agentNamesToStart);
+        Transcription.get().startTranscription()
+            .catch(e => Events.get().showError(`Failed to start transcription: ${e}`));
+        AgentManager.get().managerStart(agentNames)
+            .then(() => forceRender())
+            .catch(e => Events.get().showError(`Failed to start agents ${agentNames}: ${e}`));
     }, []);
+    const startAll = useCallback(() => startAgents(), [startAgents]);
+    const startMode = useCallback((modeId: string) => startAgents(appConfig.modes?.[modeId].agents || []), [appConfig, startAgents]);
+    const startAgent = useCallback((agentName: string) => startAgents([agentName]), [startAgents]);
 
-    const startAgent = useCallback((agentName: string) => {
-        Transcription.get().startTranscription();
-        AgentManager.get().managerStart([agentName]);
-    }, []);
-
-    const stop = useCallback(() => {
-        setRunningModeId(null);
-        Transcription.get().stopTranscription();
-        AgentManager.get().managerStop();
-    }, []);
-
-    const stopAgent = useCallback((agentName: string) => {
-        AgentManager.get().stopAgent(agentName);
-    }, []);
+    const stopAgents = useCallback((agentNames?: string[]) => {
+        if (agentNames !== undefined && !agentNames.length) {
+            return;
+        }
+        if (agentNames === undefined || [...runningAgents].every(value => agentNames.includes(value))) {
+            // All agents are being shutdown
+            Transcription.get().stopTranscription()
+                .catch(e => Events.get().showError(`Failed to stop transcription: ${e}`));
+            AgentManager.get().managerStop()
+                .then(() => forceRender())
+                .catch(e => Events.get().showError(`Failed to stop all agents: ${e}`));
+        } else {
+            // Subset of agents are being shutdown
+            agentNames.forEach(agentName => AgentManager.get().stopAgent(agentName)
+                .then(() => forceRender())
+                .catch(e => Events.get().showError(`Failed to stop agent ${agentName}: ${e}`)));
+        }
+    }, [runningAgents]);
+    const stop = useCallback(() => stopAgents(), [stopAgents]);
+    const stopMode = useCallback((modeId: string) => stopAgents(appConfig.modes?.[modeId].agents || []), [appConfig, stopAgents]);
+    const stopAgent = useCallback((agentName: string) => stopAgents([agentName]), [stopAgents]);
 
     useEffect(() => {
-        return Events.get().subscribe('agent-window-closed', (event: AgentWindowEvent) => {
+        return Events.get().subscribe([
+            'agent-window-open',
+            'agent-window-closed',
+        ], (
+            event: AgentWindowEvent
+        ) => {
             switch (event.type) {
+                case 'agent-window-open':
                 case 'agent-window-closed':
-                    if (!AgentManager.get().getRunningAgentNames().length) {
-                        // If user closes the last agent window,
-                        // mark any mode as not running
-                        setRunningModeId(null);
-                    }
-                    forceRender(); // refresh runningAgents
+                    forceRender(); // refresh running agents and mode
                     break;
             }
         });
@@ -137,13 +133,14 @@ export default function useModes(): {
 
     return {
         modes: appConfig.modes || {},
-        runningModeId,
+        runningModeIds,
         runningAgents,
         startAgent,
         startAll,
         startMode,
         stop,
         stopAgent,
+        stopMode,
         createMode,
         renameMode,
         deleteMode,
@@ -152,3 +149,14 @@ export default function useModes(): {
         agentNames: Object.keys(agentByName),
     };
 };
+
+const getRunningModeIds = (appConfig: AppConfig, runningAgentNames: Set<string>) => {
+    return new Set(Object.entries(appConfig.modes || {})
+        .filter(([_, mode]) => {
+            const modeAgentNames = mode.agents;
+            return !!modeAgentNames.length
+                && modeAgentNames.length === runningAgentNames.size
+                && modeAgentNames.every(name => runningAgentNames.has(name));
+        })
+        .map(([modeId, _]) => modeId));
+}

@@ -2,7 +2,8 @@ import {invoke} from "@tauri-apps/api/core";
 import {WebviewWindow} from "@tauri-apps/api/webviewWindow";
 import {Events} from "./events.ts";
 import {getAppConfig} from "../util/useAppConfig.ts";
-import {currentMonitor} from "@tauri-apps/api/window";
+import {currentMonitor, Window} from "@tauri-apps/api/window";
+import {windowCloseSafely} from "../util/windowUtil.ts";
 
 export interface Agent {
     intervalInSec?: number;
@@ -38,15 +39,36 @@ export class AgentManager {
 
     private static instance: AgentManager | null = null
     private agentWindows: {
-        [name: string]: WebviewWindow;
+        [name: string]: Window;
     } = {}
     private monitorUnlisten: (() => void) | null = null;
+
+    private constructor() {
+        this.loadRunningAgents()
+            .catch(e => Events.get().showError(`Failed to load running agents: ${e}`));
+    }
 
     static get = () => {
         if (!AgentManager.instance) {
             AgentManager.instance = new AgentManager();
         }
         return AgentManager.instance;
+    }
+
+    private async loadRunningAgents() {
+        let changed = false;
+        (await Window.getAll())
+            .forEach(window => {
+                const agentName = this.windowNameToAgentName(window.label);
+                if (!agentName) {
+                    return;
+                }
+                this.agentWindows[agentName] = window;
+                changed = true;
+            });
+        if (changed) {
+            await Events.get().send({type: 'agent-window-open'} as AgentWindowEvent)
+        }
     }
 
     public async getAllAgentConfigs(): Promise<AgentConfig[]> {
@@ -86,12 +108,20 @@ export class AgentManager {
         }
     }
 
+    public agentNameToWindowName(name: string) {
+        return `agent-${name}`;
+    }
+
+    public windowNameToAgentName(name: string) {
+        return name.startsWith('agent-') ? name.substring(6) : null;
+    }
+
     private async startAgent(agentConfig: AgentConfig) {
         if (this.agentWindows[agentConfig.name]) {
             return;
         }
 
-        const windowLabel = `agent-${agentConfig.name}`;
+        const windowLabel = this.agentNameToWindowName(agentConfig.name);
         const windowProps = getAppConfig().windowProps?.[windowLabel];
         const width = windowProps?.width || 800;
         const height = windowProps?.height || 250;
@@ -135,17 +165,21 @@ export class AgentManager {
         });
     }
 
-    public stopAgent(agentName: string) {
+    public async stopAgent(agentName: string) {
         const agentWindow = this.agentWindows[agentName]
 
         if (!agentWindow) {
             return;
         }
 
-        agentWindow.close();
+        try {
+            await windowCloseSafely(agentWindow);
+        } catch (e) {
+            // Probably already closed
+        }
         delete this.agentWindows[agentName];
 
-        if(Object.keys(this.agentWindows).length > 0) {
+        if (Object.keys(this.agentWindows).length > 0) {
             return;
         }
 
@@ -153,13 +187,17 @@ export class AgentManager {
         this.monitorUnlisten = null;
     }
 
-    public managerStop() {
+    public async managerStop() {
         this.monitorUnlisten?.();
         this.monitorUnlisten = null;
 
-        Object.values(this.agentWindows).forEach(webview => {
-            webview.close();
-        });
+        await Promise.all(Object.values(this.agentWindows).map(async agentWindow => {
+            try {
+                await windowCloseSafely(agentWindow);
+            } catch (e) {
+                // Probably already closed
+            }
+        }));
         this.agentWindows = {};
     }
 

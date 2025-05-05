@@ -15,7 +15,7 @@ import PinOffIcon from "./icon/PinOffIcon.tsx";
 import PinIcon from "./icon/PinIcon.tsx";
 import {openAgentEdit} from "./agentEditWindow.ts";
 import {useForceRender} from "./util/useForceRender.ts";
-import {currentWindowClose} from "./util/windowUtil.ts";
+import {currentWindowCloseSafely} from "./util/windowUtil.ts";
 
 Transcription.get(); // Required to subscribe to transcription events
 
@@ -121,7 +121,7 @@ export default function AppAgent() {
                         flexShrink: 0,
                         marginBottom: '0.5rem',
                     }}>
-                        <IconButton onClick={currentWindowClose}>
+                        <IconButton onClick={currentWindowCloseSafely}>
                             <Close/>
                         </IconButton>
                         <IconButton size='small' onClick={() => setTaskbarPinned(!taskbarPinned)}>

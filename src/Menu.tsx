@@ -8,6 +8,7 @@ import {
     useColorScheme
 } from "@mui/material";
 import React, {createContext, ReactNode, useContext, useState} from "react";
+import useIsDark from "./util/useIsDark.tsx";
 
 // Create context for sharing active tab state
 const MenuContext = createContext<{
@@ -54,8 +55,7 @@ export default function Menu(props: {
         hideTabSelection,
     } = props;
 
-    const {mode, systemMode} = useColorScheme();
-    const isDark = (mode === 'system' ? systemMode : mode) === 'dark';
+    const isDark = useIsDark();
 
     // Extract tab information from children if tabs prop not provided
     const childrenArray = React.Children.toArray(children);

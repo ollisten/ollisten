@@ -3,7 +3,16 @@ import {Chip, Grid2} from "@mui/material";
 import Note from "./Note.tsx";
 
 export default function Launcher() {
-    const {modes, startMode, stop, runningModeId, agentNames, runningAgents, startAgent, stopAgent} = useModes();
+    const {
+        modes,
+        startMode,
+        runningModeIds,
+        agentNames,
+        runningAgents,
+        startAgent,
+        stopAgent,
+        stopMode
+    } = useModes();
     return (
         <>
             {!!Object.keys(modes).length && (
@@ -13,12 +22,13 @@ export default function Launcher() {
                             key={`mode-${mode.label}`}
                             type='mode'
                             label={mode.label}
-                            running={modeId === runningModeId}
+                            running={runningModeIds.has(modeId)}
+                            disabled={!mode.agents.length}
                             onClick={() => {
-                                if (modeId !== runningModeId) {
+                                if (!runningModeIds.has(modeId)) {
                                     startMode(modeId);
                                 } else {
-                                    stop();
+                                    stopMode(modeId);
                                 }
                             }}
                         />
@@ -69,6 +79,7 @@ function LauncherMode(props: {
     label: string;
     onClick: () => void;
     running: boolean;
+    disabled?: boolean;
 }) {
     return (
         <Grid2 sx={{
@@ -82,6 +93,7 @@ function LauncherMode(props: {
                 color={props.running ? 'primary' : 'default'}
                 onClick={props.onClick}
                 label={props.label}
+                disabled={props.disabled}
             />
         </Grid2>
     );

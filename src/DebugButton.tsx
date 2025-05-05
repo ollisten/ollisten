@@ -16,7 +16,7 @@ export default function DebugButton() {
                         width: 1024,
                         height: 768,
                         resizable: true,
-                        visible: true,
+                        visible: false,
                         contentProtected: true,
                     });
                 }}

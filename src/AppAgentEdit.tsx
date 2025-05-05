@@ -23,7 +23,7 @@ import TranscriptionButton from "./TranscriptionButton.tsx";
 import Menu, {Tab} from "./Menu.tsx";
 import PrompterButton from "./PrompterButton.tsx";
 import {Help} from "@mui/icons-material";
-import {currentWindowClose} from "./util/windowUtil.ts";
+import {currentWindowCloseSafely} from "./util/windowUtil.ts";
 
 Transcription.get(); // Required to subscribe to transcription events
 let initialAgentConfig: AgentConfig = AgentManager.get().clientGetAgentConfig();
@@ -100,7 +100,7 @@ export default function AppAgentEdit() {
             Events.get().showError(`Failed to delete: ${e}`);
             return;
         }
-        await currentWindowClose()
+        await currentWindowCloseSafely()
     }, []);
 
     const [transcriptionHistory, setTranscriptionHistory] = useState<string>('Guest: Hey' +

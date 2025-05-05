@@ -4,8 +4,7 @@ import {Llm} from "./llm.ts";
 import debounce, {DebouncedFunction} from "../util/debounce.ts";
 import {DeviceSource, Transcription, TranscriptionDataEvent} from "./transcription.ts";
 import {Events, Unsubscribe} from "./events.ts";
-import {getCurrentWindow} from "@tauri-apps/api/window";
-import {currentWindowClose} from "../util/windowUtil.ts";
+import {currentWindowCloseSafely} from "../util/windowUtil.ts";
 
 export enum PrompterStatus {
     Stopped,
@@ -121,7 +120,7 @@ export class Prompter {
                         break;
                     case 'file-agent-deleted':
                         if (event.name === this.agentName) {
-                            currentWindowClose();
+                            currentWindowCloseSafely();
                         }
                         break;
                     case 'file-agent-created':

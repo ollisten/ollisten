@@ -49,6 +49,7 @@ fn open_or_restore_main_window(app: &AppHandle) -> Result<WebviewWindow, String>
             .title("ollisten")
             .min_inner_size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT)
             .inner_size(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT)
+            .visible(false)
             .build()
             .map_err(|e| format!("Failed to create main window: {}", e))
     }

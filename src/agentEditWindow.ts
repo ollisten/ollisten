@@ -13,7 +13,7 @@ export const openAgentEdit = (name: string, agent: Agent) => {
         width: 1440,
         height: 910,
         resizable: true,
-        visible: true,
+        visible: false,
         contentProtected: true,
     });
     webview.once('tauri://created', () => {
