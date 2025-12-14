@@ -58,17 +58,16 @@ const subscribe: Subscribe = (listener: Listener) => {
  */
 
 export type DismissAlert = () => void;
-// @ts-ignore
-export const useAlerts: {
+export type UseAlertsReturn = {
     addAlert: (alert: AlertDefinition) => DismissAlert;
-    addAlertWithoutId: (alert: AlertDefinition) => DismissAlert;
     removeAlert: (id: string) => void;
     beginProcessing: (alertInProgress: Partial<AlertDefinition>) => {
         onSuccess: (alertSuccess: Partial<AlertDefinition>) => void;
         onError: (alertError: Partial<AlertDefinition>) => void;
     };
     subscribe: Subscribe;
-} = () => {
+};
+export const useAlerts = (): UseAlertsReturn => {
 
     const beginProcessing = useCallback((alertInProgress: Partial<AlertDefinition>) => {
         let dismissInProgress = addAlert({

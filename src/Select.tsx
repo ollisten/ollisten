@@ -1,4 +1,4 @@
-import {FormControl, InputLabel, MenuItem, Select as MuiSelect, SxProps, Theme} from "@mui/material";
+import {FormControl, InputLabel, MenuItem, Select as MuiSelect, SelectChangeEvent, SxProps, Theme} from "@mui/material";
 import {useCallback} from "react";
 
 export type Option = {
@@ -13,7 +13,7 @@ export default function (props: {
     value: string | null;
     onSelect: (newValue: string) => void;
 }) {
-    const onChange = useCallback((e: any) => {
+    const onChange = useCallback((e: SelectChangeEvent<string>) => {
         props.onSelect(e.target.value);
     }, [props.onSelect]);
 

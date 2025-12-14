@@ -285,7 +285,8 @@ fn list_audio_input_devices(devices: &mut Vec<DeviceOption>) -> Result<(), Strin
 /// Get the device ID for a given UID, only way to get a hidden device
 fn get_device_by_uid(uid: &str) -> Result<Option<AudioDeviceID>, String> {
     unsafe {
-        let cstr_uid = CString::new(uid).unwrap();
+        let cstr_uid = CString::new(uid)
+            .map_err(|e| format!("Invalid UID string (contains null byte): {}", e))?;
         let cf_uid = CFStringCreateWithCString(
             kCFAllocatorDefault,
             cstr_uid.as_ptr(),

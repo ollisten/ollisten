@@ -207,6 +207,10 @@ export class AgentManager {
         if (!agentParam) {
             throw new Error('Expecting agent config to be passed in, but found none')
         }
-        return JSON.parse(decodeURIComponent(agentParam));
+        try {
+            return JSON.parse(decodeURIComponent(agentParam));
+        } catch (e) {
+            throw new Error(`Failed to parse agent config from URL parameter: ${e}`);
+        }
     }
 }

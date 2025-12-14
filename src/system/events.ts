@@ -18,7 +18,7 @@ export type UserFacingMessageEvent = {
 export class Events {
 
     private static instance: Events | null = null
-    private readonly eventTypeToListeners: Map<string, Set<Listener<any>>> = new Map();
+    private readonly eventTypeToListeners: Map<string, Set<Listener<Event>>> = new Map();
     private readonly eventTypeToExternalListenerUnsubscribe: Map<string, Unsubscribe> = new Map();
     private readonly currentlyProcessingType: Set<string> = new Set();
 
@@ -65,7 +65,7 @@ export class Events {
         if (this.eventTypeToExternalListenerUnsubscribe.has(type)) {
             return;
         }
-        const unsubscribe = await listen<any>(type, (event) => {
+        const unsubscribe = await listen<Event>(type, (event) => {
             this.sendInternal(event.payload);
         });
         this.eventTypeToExternalListenerUnsubscribe.set(type, unsubscribe);
@@ -81,7 +81,8 @@ export class Events {
 
     public sendInternal<E extends Event>(event: E) {
         if (this.currentlyProcessingType.has(event.type)) {
-            throw new Error(`Event loop detected for event type: ${event.type}`);
+            console.error(`Event loop detected for event type: ${event.type}. Skipping to prevent infinite recursion.`);
+            return;
         }
         this.currentlyProcessingType.add(event.type);
         const listeners = this.eventTypeToListeners.get(event.type);
@@ -130,7 +131,7 @@ export class Events {
         })
     }
 
-    public showError(message: any) {
+    public showError(message: string | Error | unknown) {
         this.sendInternal<UserFacingMessageEvent>({
             type: 'user-facing-message',
             severity: 'error',

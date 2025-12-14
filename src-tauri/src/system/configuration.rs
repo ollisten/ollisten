@@ -36,7 +36,8 @@ impl Default for Configuration {
 /// # Returns
 /// A `Result` containing the `Configuration` or an error.
 pub fn config_get() -> Result<Configuration, Box<dyn std::error::Error>> {
-    let mut cache = CACHE.lock().unwrap();
+    let mut cache = CACHE.lock()
+        .expect("Configuration cache mutex poisoned - this indicates a critical error in a previous operation");
     if let Some(ref cached_data) = *cache {
         return Ok(cached_data.clone());
     }
@@ -70,7 +71,8 @@ pub fn config_set(data: &Configuration) -> Result<(), Box<dyn std::error::Error>
     let writer = std::io::BufWriter::new(file);
     serde_json::to_writer(writer, data)?;
 
-    let mut cache = CACHE.lock().unwrap();
+    let mut cache = CACHE.lock()
+        .expect("Configuration cache mutex poisoned - this indicates a critical error in a previous operation");
     *cache = Some(data.clone());
     Ok(())
 }

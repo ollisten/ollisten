@@ -4,17 +4,11 @@ use crate::transcription::model::TranscriptionModel;
 use crate::transcription::voice_audio_detector_ext_v2::VoiceActivityRechunkerStreamV2;
 use kalosm::sound::*;
 use log::{error, info};
-use rodio::cpal::platform::CoreAudioDevice;
-use rodio::{cpal, Device};
-use std::any::Any;
-use std::cmp::PartialEq;
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::{Mutex, MutexGuard};
-use tokio::task::AbortHandle;
 
 pub struct TranscriptionSession {
     pub model_type: TranscriptionModel,
@@ -33,6 +27,13 @@ pub async fn start_transcription(
     device_ids: Vec<i32>,
     state: State<'_, TranscriptionState>,
 ) -> Result<(), String> {
+    // Validate device IDs - only -1 (default device) or positive IDs are allowed
+    for &device_id in &device_ids {
+        if device_id < -1 {
+            return Err(format!("Invalid device ID: {}. Device IDs must be -1 (default) or positive integers.", device_id));
+        }
+    }
+
     let main_app_handle = app_handle.clone();
 
     let mut session = state.session.lock().await;
@@ -106,7 +107,7 @@ pub async fn start_transcription(
         };
 
         // Create the audio stream
-        let mut mic_stream = mic.stream();
+        let mic_stream = mic.stream();
         let stream = mic_stream.voice_activity_stream();
         let stream = VoiceActivityRechunkerStreamV2::new(
             stream,

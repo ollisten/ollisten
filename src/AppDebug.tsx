@@ -55,7 +55,7 @@ export default function AppDebug() {
     const forceRender = useForceRender();
     const transcriptionEventsRef = useRef<Array<TranscriptionRecord>>([]);
     const llmRecordsRef = useRef<Array<LlmRecord>>([]);
-    const eventsRef = useRef<Array<any>>([]);
+    const eventsRef = useRef<Array<Event & { received: Date; uuid: string }>>([]);
 
     useEffect(() => {
         return Events.get().subscribe(AllEventTypes, event => {

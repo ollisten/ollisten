@@ -93,8 +93,7 @@ export class Prompter {
             };
         }
 
-        // TODO fix type
-        const eventsToListen: any = ['TranscriptionData']
+        const eventsToListen: Array<'TranscriptionData' | 'file-agent-created' | 'file-agent-deleted' | 'file-agent-modified'> = ['TranscriptionData'];
         if (!!watchFileChanges && !!this.agentName) {
             eventsToListen.push('file-agent-created', 'file-agent-deleted', 'file-agent-modified')
         }
@@ -221,10 +220,16 @@ export class Prompter {
         let answer = await Llm.get().talk(prompt, this.structuredOutputSchema);
         let answerJson: object | null = null;
         if (this.structuredOutputMapperTemplate) {
-            answerJson = JSON.parse(answer);
-            answer = this.structuredOutputMapperTemplate(answerJson, {
-                helpers: HandlebarHelpers,
-            });
+            try {
+                answerJson = JSON.parse(answer);
+                answer = this.structuredOutputMapperTemplate(answerJson, {
+                    helpers: HandlebarHelpers,
+                });
+            } catch (e) {
+                const errorMsg = `Failed to parse LLM response as JSON: ${e}. Response: ${answer}`;
+                await Events.get().showError(errorMsg);
+                throw new Error(errorMsg);
+            }
         }
         const responseEvent: LlmResponseEvent = {
             type: 'llm-response',

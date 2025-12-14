@@ -1,5 +1,5 @@
 use crate::util::error_handler::show_error;
-use log::{error, info};
+use log::info;
 use std::process::Command;
 use tauri::utils::platform::resource_dir;
 use tauri::Manager;

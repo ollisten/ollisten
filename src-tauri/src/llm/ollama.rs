@@ -61,8 +61,9 @@ pub async fn start_and_get_llm_model_options_ollama() -> Result<OllamaLlmModels,
     start_ollama_serve().map_err(|e| format!("Error starting Ollama: {}", e))?;
 
     // Wait for Ollama to start
-    // check get models every second for 20 seconds then error out
+    // check get models every second for 60 seconds (increased from 20 to accommodate large models)
     let mut i = 0;
+    let max_retries = 60;
     loop {
         match get_llm_model_options_ollama().await {
             Ok(models) => {
@@ -72,7 +73,7 @@ pub async fn start_and_get_llm_model_options_ollama() -> Result<OllamaLlmModels,
                 })
             }
             Err(_) => {
-                if i >= 20 {
+                if i >= max_retries {
                     return Ok(OllamaLlmModels {
                         models: vec![],
                         status: OllamaStatus::Stopped,

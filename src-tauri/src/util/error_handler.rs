@@ -1,9 +1,6 @@
-use crate::config::agents::{Agent, FileChangeEvent};
 use log::error;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, EventTarget};
+use tauri::{AppHandle, Emitter};
 
 const RUST_ERROR_EVENT_TYPE: &str = "RustErrorEvent";
 

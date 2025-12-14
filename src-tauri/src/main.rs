@@ -8,17 +8,11 @@ mod system;
 mod transcription;
 mod util;
 
-use crate::audio::devices::DeviceOption;
 use crate::config::watcher::WatcherState;
 use crate::llm::router::LlmRouterState;
-use crate::llm::types::LlmModel;
 use crate::transcription::control::TranscriptionState;
 use crate::util::error_handler::show_error;
-use log::{error, info, LevelFilter};
-use serde::Serialize;
-use std::any::Any;
-use std::collections::HashMap;
-use std::path::Path;
+use log::{info, LevelFilter};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::image::Image;
@@ -94,7 +88,8 @@ async fn main() {
             config::app_config::set_app_config,
         ])
         .setup(|app| {
-            let window = open_or_restore_main_window(app.handle()).unwrap();
+            let window = open_or_restore_main_window(app.handle())
+                .map_err(|e| format!("Failed to create or restore main window during setup: {}", e))?;
             let is_dark_mode = window.theme().unwrap_or(tauri::Theme::Light) == tauri::Theme::Dark;
 
             // Setup app Tray and related events

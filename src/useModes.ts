@@ -1,4 +1,4 @@
-import {useCallback, useEffect} from "react";
+import {useCallback, useEffect, useMemo} from "react";
 import useAgents, {AgentsMap} from "./useAgents.ts";
 import {AppConfig, useAppConfig} from "./util/useAppConfig.ts";
 import {randomTimeUuid} from "./util/idUtil.ts";
@@ -33,8 +33,8 @@ export default function useModes(): {
     const {appConfig, setAppConfig} = useAppConfig();
 
     const forceRender = useForceRender();
-    const runningAgents = new Set(AgentManager.get().getRunningAgentNames());
-    const runningModeIds = getRunningModeIds(appConfig, runningAgents);
+    const runningAgents = useMemo(() => new Set(AgentManager.get().getRunningAgentNames()), [forceRender]);
+    const runningModeIds = useMemo(() => getRunningModeIds(appConfig, runningAgents), [appConfig, runningAgents]);
 
     const createMode: CreateMode = useCallback(() => {
         setAppConfig(c => {
@@ -78,6 +78,8 @@ export default function useModes(): {
     const getAgentByName = useCallback((name: string) => {
         return agentByName[name];
     }, [agentByName]);
+
+    const agentNames = useMemo(() => Object.keys(agentByName), [agentByName]);
 
     const startAgents = useCallback((agentNames?: string[]) => {
         if (agentNames != undefined && !agentNames.length) {
@@ -146,7 +148,7 @@ export default function useModes(): {
         deleteMode,
         setModeAgents,
         getAgentByName,
-        agentNames: Object.keys(agentByName),
+        agentNames,
     };
 };
 

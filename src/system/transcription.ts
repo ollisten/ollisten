@@ -302,7 +302,7 @@ export class Transcription {
 
                 // Chose one from config if available
                 const nameFromConfig = getAppConfig().selectedTranscriptionModelName;
-                if (nameFromConfig && response.findIndex(n => n === nameFromConfig) !== -1) {
+                if (nameFromConfig && response.includes(nameFromConfig)) {
                     chosenNewName = nameFromConfig;
                 }
 
@@ -350,7 +350,7 @@ export class Transcription {
             }
             this.deviceInputOptions = response;
             this.onEvent({type: 'device-input-options-updated', options: response});
-            if (this.deviceInputId == null || this.deviceInputOptions.findIndex(o => o.id === this.deviceInputId) === -1) {
+            if (this.deviceInputId == null || !this.deviceInputOptions.some(o => o.id === this.deviceInputId)) {
                 var chosenNewId: number | undefined = undefined;
 
                 // Chose one from config if available

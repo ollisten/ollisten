@@ -78,7 +78,8 @@ impl<S> VoiceActivityRechunkerStreamV2<S> {
     }
 
     fn pop_last_sample(&mut self) {
-        let (probability, len) = self.voice_probabilities_window.pop_back().unwrap();
+        let (probability, len) = self.voice_probabilities_window.pop_back()
+            .expect("voice_probabilities_window should not be empty when pop_last_sample is called");
         self.voice_probabilities_window_sum -= probability * len.as_secs_f32();
         if self.in_voice_run {
             self.voice_probabilities_before_window_sum += probability * len.as_secs_f32();
@@ -179,7 +180,8 @@ impl<S: futures_core::Stream<Item = VoiceActivityDetectorOutput> + Unpin> future
                     this.duration_before_window += sample_duration;
                     // If the pre-voice buffer is full, remove the first sample from it
                     while this.duration_before_window >= this.include_duration_before {
-                        let sample = this.buffer.pop_front().unwrap();
+                        let sample = this.buffer.pop_front()
+                            .expect("buffer should not be empty when duration_before_window >= include_duration_before");
                         this.duration_before_window -= rodio::Source::total_duration(&sample)
                             .expect("samples must have a duration");
                     }

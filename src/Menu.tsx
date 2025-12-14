@@ -60,17 +60,13 @@ export default function Menu(props: {
     // Extract tab information from children if tabs prop not provided
     const childrenArray = React.Children.toArray(children);
     const tabsFromChildren = childrenArray
-        .filter((child) => React.isValidElement(child) && (child.type as any) === Tab)
+        .filter((child): child is React.ReactElement => React.isValidElement(child) && (child.type as React.ComponentType) === Tab)
         .map((child) => {
-            if (React.isValidElement(child)) {
-                return {
-                    label: child.props.label,
-                    icon: child.props.icon,
-                };
-            }
-            return null;
-        })
-        .filter(Boolean) as TabItem[];
+            return {
+                label: child.props.label as string,
+                icon: child.props.icon as ReactNode | undefined,
+            };
+        });
 
     // Use provided tabs prop or infer from children
     const tabItems = tabs || tabsFromChildren;
